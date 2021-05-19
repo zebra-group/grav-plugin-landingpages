@@ -1,0 +1,36 @@
+name: Landingpages
+slug: landingpages
+type: plugin
+version: 0.1.0
+description: Generates Landing Pages from Directus Collections
+icon: plug
+author:
+  name: Zebra Group
+  email: erik.konrad@zebra.de
+homepage: https://github.com/zebra-group/grav-plugin-landingpages
+demo: http://demo.yoursite.com
+keywords: grav, plugin, etc
+bugs: https://github.com/zebra-group/grav-plugin-landingpages/issues
+docs: https://github.com/zebra-group/grav-plugin-landingpages/blob/develop/README.md
+license: MIT
+
+dependencies:
+  - { name: grav, version: '>=1.6.0' }
+
+form:
+  validation: loose
+  fields:
+    enabled:
+      type: toggle
+      label: PLUGIN_ADMIN.PLUGIN_STATUS
+      highlight: 1
+      default: 0
+      options:
+        1: PLUGIN_ADMIN.ENABLED
+        0: PLUGIN_ADMIN.DISABLED
+      validate:
+        type: bool
+    text_var:
+      type: text
+      label: PLUGIN_LANDINGPAGES.TEXT_VARIABLE
+      help: PLUGIN_LANDINGPAGES.TEXT_VARIABLE_HELP

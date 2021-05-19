@@ -1,0 +1,29 @@
+{
+  "name": "zebra-group/landingpages",
+  "type": "grav-plugin",
+  "description": "Generates Landing Pages from Directus Collections",
+  "keywords": ["plugin"],
+  "homepage": "https://github.com/zebra-group/grav-plugin-landingpages",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Zebra Group",
+      "email": "erik.konrad@zebra.de",
+      "role": "Developer"
+    }
+  ],
+  "require": {
+    "php": ">=7.1.3"
+  },
+  "autoload": {
+    "psr-4": {
+      "Grav\\Plugin\\Landingpages\\": "classes/"
+    },
+    "classmap":  ["landingpages.php"]
+  },
+  "config": {
+    "platform": {
+      "php": "7.1.3"
+    }
+  }
+}
