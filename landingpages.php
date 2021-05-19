@@ -53,7 +53,24 @@ class LandingpagesPlugin extends Plugin
 
         // Enable the main events we are interested in
         $this->enable([
-            // Put your main events here
+            'onPageInitialized' => ['onPageInitialized', 0],
         ]);
+    }
+
+    public function onPageInitialized() {
+        $this->processWebHooks($this->grav['uri']->route());
+    }
+
+    private function processWebHooks(string $route) {
+        switch ($route) {
+            case '/' . $this->config["plugins.directus"]['directus']['hookPrefix'] . '/update-flex-object':
+                $this->updateFlexObject();
+                break;
+        }
+        return true;
+    }
+
+    private function updateFlexObject() {
+        dd('updateFlexObject');
     }
 }
