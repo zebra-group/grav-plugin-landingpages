@@ -130,10 +130,6 @@ class LandingpagesPlugin extends Plugin
 
         $statusCode = 0;
 
-        $requestBody['collection'] = 'zbr_landingpages';
-        $requestBody['item'] = [4,5];
-        $requestBody['action'] = 'update';
-
         if(isset($requestBody['collection'])) {
             /** @var FlexCollectionInterface $collection */
             $this->collection = $this->flex->getCollection($requestBody['collection']);
