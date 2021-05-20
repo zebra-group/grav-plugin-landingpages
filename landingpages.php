@@ -178,9 +178,6 @@ class LandingpagesPlugin extends Plugin
     private function createFlexObject($collection, $id) {
         $response = $this->requestItem($collection, $id);
 
-        $fp = fopen('logs/debug/response.json', 'w');
-        fwrite($fp, json_encode($response));
-        fclose($fp);
         if($response->getStatusCode() === 200) {
             $data = $response->toArray()['data'];
             $objectInstance = new FlexObject($data, $data['id'], $this->directory);
