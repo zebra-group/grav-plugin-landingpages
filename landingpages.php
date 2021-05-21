@@ -2,6 +2,7 @@
 namespace Grav\Plugin;
 
 use Composer\Autoload\ClassLoader;
+use Grav\Common\Filesystem\Folder;
 use Grav\Common\Grav;
 use Grav\Common\Plugin;
 use Grav\Framework\Flex\Flex;
@@ -116,6 +117,9 @@ class LandingpagesPlugin extends Plugin
         switch ($route) {
             case '/' . $this->config["plugins.directus"]['directus']['hookPrefix'] . '/update-flex-object':
                 $this->processFlexObject();
+                break;
+            case '/' . $this->config["plugins.directus"]['directus']['hookPrefix'] . '/crawl-landingpages':
+                $this->crawlLandingpages();
                 break;
         }
         return true;
@@ -236,11 +240,88 @@ class LandingpagesPlugin extends Plugin
     /**
      * @param $collection
      * @param $id
+     * @param int $depth
      * @return \Symfony\Contracts\HttpClient\ResponseInterface
      * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
      */
-    private function requestItem($collection, $id) {
+    private function requestItem($collection, $id, $depth = 2) {
         $requestUrl = $this->directusUtil->generateRequestUrl($collection, $id);
         return $this->directusUtil->get($requestUrl);
+    }
+
+    /**
+     * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
+     * @throws \Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface
+     * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
+     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
+     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+     */
+    private function crawlLandingpages(){
+        $response = $this->requestItem($this->config()['landingpages']['entrytable'], 0, 4);
+
+        if($response->getStatusCode() === 200){
+            $i = 0;
+            foreach ($response->toArray()['data'] as $landingpage){
+                $this->createFile(
+                    $this->setFileHeaders($landingpage),
+                    $landingpage[$this->config()['landingpages']['mapping']['keyword']][$this->config()['landingpages']['mapping']['keywordHash']],
+                    $landingpage[$this->config()['landingpages']['mapping']['audience']][$this->config()['landingpages']['mapping']['audienceId']]
+                );
+                $i++;
+            }
+            $message = $i.' elements created';
+        }
+        else{
+            $message = 'something went wrong';
+        }
+
+        echo json_encode([
+            'status' => $response->getStatusCode(),
+            'message' => $message
+        ], JSON_THROW_ON_ERROR);
+        exit($response->getStatusCode());
+    }
+
+    /**
+     * @param string $frontMatter
+     * @param $hash
+     * @param $audience
+     */
+    private function createFile(string $frontMatter, $hash, $audience) {
+
+        $filename = 'landingpage.md';
+
+        if(!is_dir($this->config()['landingpages']['entrypoint'].'/'.$hash)){
+            mkdir($this->config()['landingpages']['entrypoint'].'/'.$hash);
+        }
+
+        if(!is_dir($this->config()['landingpages']['entrypoint'].'/'.$hash.'/'.$audience)){
+            mkdir($this->config()['landingpages']['entrypoint'].'/'.$hash.'/'.$audience);
+        }
+
+        $fp = fopen($this->config()['landingpages']['entrypoint'].'/'.$hash.'/'.$audience . '/' . $filename, 'w');
+
+        fwrite($fp, $frontMatter);
+        fclose($fp);
+    }
+
+    /**
+     * @param array $dataSet
+     * @return string
+     */
+    private function setFileHeaders(array $dataSet) {
+
+        $mappingCollections = $this->config()['landingpages']['mapping']['collections'];
+
+        return '---' . "\n" .
+            'title: ' . "'" . htmlentities($dataSet['id_zbr_landingpage']['zbr_headline'], ENT_QUOTES) . "'\n" .
+            /*'routes: '. "\n" .
+            '    aliases: '. "\n" .
+            "        - '/".$dataSet[$this->config()['landingpages']['mapping']['keyword']][$this->config()['landingpages']['mapping']['keywordHash']].'?audience='. $dataSet[$this->config()['landingpages']['mapping']['audience']][$this->config()['landingpages']['mapping']['audienceId']]."'\n".*/
+            'dataset:' . "\n" .
+            '    '.$mappingCollections['id_zbr_keywords'].': ' . $dataSet['id_zbr_keywords']['id'] ."\n" .
+            '    '.$mappingCollections['id_zbr_landingpage'].': ' . $dataSet['id_zbr_landingpage']['id'] ."\n" .
+            '    '.$mappingCollections['id_zbr_audience'].': ' . $dataSet['id_zbr_audience']['id'] ."\n" .
+            '---';
     }
 }
