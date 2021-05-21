@@ -93,6 +93,14 @@ class LandingpagesPlugin extends Plugin
      * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
      */
     public function onPageInitialized() {
+        $requestedUri = $this->grav['uri']->path();
+
+        $UriParams = array_merge(array_filter(explode('/', $requestedUri)));
+
+        if($UriParams[0] === $this->config()['landingpages']['entryslug'] && isset($_GET['audience']) ){
+            $this->redirect($requestedUri.'/'.$_GET['audience'], 301);
+        }
+
         /** @var Flex $flex */
         $this->flex = Grav::instance()->get('flex');
 
@@ -323,5 +331,15 @@ class LandingpagesPlugin extends Plugin
             '    '.$mappingCollections['id_zbr_landingpage'].': ' . $dataSet['id_zbr_landingpage']['id'] ."\n" .
             '    '.$mappingCollections['id_zbr_audience'].': ' . $dataSet['id_zbr_audience']['id'] ."\n" .
             '---';
+    }
+
+    /**
+     * @param $url
+     * @param int $statusCode
+     */
+    private function redirect( $url, int $statusCode = 303)
+    {
+        header('Location: ' . $url, true, $statusCode);
+        die();
     }
 }

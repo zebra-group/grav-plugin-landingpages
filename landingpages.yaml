@@ -1,5 +1,6 @@
 enabled: true
 landingpages:
+  entryslug: 'landingpages'
   entrypoint: 'user/pages/03.landingpages'
   entrytable: 'zbr_keywords2landingpages2audiences'
   mapping:
