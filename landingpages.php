@@ -5,6 +5,8 @@ use Composer\Autoload\ClassLoader;
 use Grav\Common\Filesystem\Folder;
 use Grav\Common\Grav;
 use Grav\Common\Plugin;
+use Grav\Framework\File\CsvFile;
+use Grav\Framework\File\Formatter\CsvFormatter;
 use Grav\Framework\Flex\Flex;
 use Grav\Framework\Flex\FlexObject;
 use Grav\Framework\Flex\Interfaces\FlexCollectionInterface;
@@ -93,6 +95,14 @@ class LandingpagesPlugin extends Plugin
      * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
      */
     public function onPageInitialized() {
+        $requestedUri = $this->grav['uri']->path();
+
+        $UriParams = array_merge(array_filter(explode('/', $requestedUri)));
+
+        if($UriParams[0] === $this->config()['landingpages']['entryslug'] && isset($_GET['audience']) ){
+            $this->redirect($requestedUri.'/'.$_GET['audience'], 301);
+        }
+
         /** @var Flex $flex */
         $this->flex = Grav::instance()->get('flex');
 
@@ -120,6 +130,9 @@ class LandingpagesPlugin extends Plugin
                 break;
             case '/' . $this->config["plugins.directus"]['directus']['hookPrefix'] . '/crawl-landingpages':
                 $this->crawlLandingpages();
+                break;
+            case '/' . $this->config["plugins.directus"]['directus']['hookPrefix'] . '/exportCSV':
+                $this->exportCSV();
                 break;
         }
         return true;
@@ -323,5 +336,57 @@ class LandingpagesPlugin extends Plugin
             '    '.$mappingCollections['id_zbr_landingpage'].': ' . $dataSet['id_zbr_landingpage']['id'] ."\n" .
             '    '.$mappingCollections['id_zbr_audience'].': ' . $dataSet['id_zbr_audience']['id'] ."\n" .
             '---';
+    }
+
+    /**
+     * @param $url
+     * @param int $statusCode
+     */
+    private function redirect( $url, int $statusCode = 303)
+    {
+        header('Location: ' . $url, true, $statusCode);
+        die();
+    }
+
+    /**
+     * @throws \JsonException
+     * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
+     * @throws \Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface
+     * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
+     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
+     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+     */
+    private function exportCSV(){
+
+        $response = $this->requestItem($this->config()['landingpages']['entrytable'], 0, 4);
+
+        if($response->getStatusCode() === 200) {
+            $formatter = new CsvFormatter(['file_extension' => '.csv', 'delimiter' => ";"]);
+            $file = new CsvFile($this->config()['landingpages']['export'].'_'.date('Y-m-d_H:i:s'), $formatter);
+
+            foreach ($response->toArray()['data'] as $landingpage){
+                $array[] = [
+                    'Hash' => $landingpage[$this->config()['landingpages']['mapping']['keyword']][$this->config()['landingpages']['mapping']['keywordHash']],
+                    'Keyword' => $landingpage[$this->config()['landingpages']['mapping']['keyword']]['zbr_keyword'],
+                    'Slug' => $landingpage['id_zbr_landingpage']['zbr_slug'],
+                    'Überschrift' => $landingpage['id_zbr_landingpage']['zbr_headline'],
+                    'Kurztext' => $landingpage['id_zbr_landingpage']['zbr_short_text'],
+                    'Zielgruppe' => $landingpage['id_zbr_audience']['zbr_audience_name'],
+                ];
+            }
+            $file->save($array);
+            $message = 'file created';
+        }
+        else{
+            $message = 'something went wrong';
+        }
+
+        echo json_encode([
+            'status' => $response->getStatusCode(),
+            'message' => $message
+        ], JSON_THROW_ON_ERROR);
+
+        exit($response->getStatusCode());
+
     }
 }
