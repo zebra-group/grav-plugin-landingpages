@@ -362,11 +362,6 @@ class LandingpagesPlugin extends Plugin
 
         if($response->getStatusCode() === 200) {
             $formatter = new CsvFormatter(['file_extension' => '.csv', 'delimiter' => ";"]);
-
-
-
-
-
             $file = new CsvFile($this->config()['landingpages']['export'].'_'.date('Y-m-d_H:i:s'), $formatter);
 
             foreach ($response->toArray()['data'] as $landingpage){
