@@ -361,7 +361,7 @@ class LandingpagesPlugin extends Plugin
         $response = $this->requestItem($this->config()['landingpages']['entrytable'], 0, 4);
 
         if($response->getStatusCode() === 200) {
-            $formatter = new CsvFormatter(['file_extension' => '.csv', 'delimiter' => ","]);
+            $formatter = new CsvFormatter(['file_extension' => '.csv', 'delimiter' => ";"]);
 
 
 
