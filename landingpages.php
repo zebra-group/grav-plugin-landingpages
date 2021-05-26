@@ -210,7 +210,7 @@ class LandingpagesPlugin extends Plugin
                 $object = $this->collection->get($item['id']);
 
                 if ($object) {
-                    $object->update($response->toArray()['data']);
+                    $object->update($item);
                     $object->save();
                 } else {
                     $objectInstance = new FlexObject($item, $item['id'], $this->directory);
