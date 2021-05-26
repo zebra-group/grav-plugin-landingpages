@@ -134,6 +134,9 @@ class LandingpagesPlugin extends Plugin
             case '/' . $this->config["plugins.directus"]['directus']['hookPrefix'] . '/exportCSV':
                 $this->exportCSV();
                 break;
+            case '/' . $this->config["plugins.directus"]['directus']['hookPrefix'] . '/update-flex-objects':
+                $this->processFlexObjects();
+                break;
         }
         return true;
     }
@@ -180,6 +183,47 @@ class LandingpagesPlugin extends Plugin
             'message' => 'something went wrong'
         ], JSON_THROW_ON_ERROR);
         exit($statusCode);
+    }
+
+    /**
+     * @throws \JsonException
+     * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
+     * @throws \Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface
+     * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
+     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
+     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+     */
+    private function processFlexObjects() {
+        $collectionArray = $this->config()['landingpages']['mapping']['collections'];
+
+        foreach ($collectionArray as $key => $value){
+
+            /** @var FlexCollectionInterface $collection */
+            $this->collection = $this->flex->getCollection($value);
+
+            /** @var FlexDirectoryInterface $directory */
+            $this->directory = $this->flex->getDirectory($value);
+
+            $response = $this->requestItem($value);
+
+            foreach ($response->toArray()['data'] as $item){
+                $object = $this->collection->get($item['id']);
+
+                if ($object) {
+                    $object->update($response->toArray()['data']);
+                    $object->save();
+                } else {
+                    $objectInstance = new FlexObject($item, $item['id'], $this->directory);
+                    $object = $objectInstance->create($item['id']);
+                    $this->collection->add($object);
+                }
+            }
+        }
+        echo json_encode([
+            'status' => 200,
+            'message' => 'all done'
+        ], JSON_THROW_ON_ERROR);
+        exit(200);
     }
 
     /**
@@ -257,8 +301,8 @@ class LandingpagesPlugin extends Plugin
      * @return \Symfony\Contracts\HttpClient\ResponseInterface
      * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
      */
-    private function requestItem($collection, $id, $depth = 2) {
-        $requestUrl = $this->directusUtil->generateRequestUrl($collection, $id);
+    private function requestItem($collection, $id = 0, $depth = 2) {
+        $requestUrl = $this->directusUtil->generateRequestUrl($collection, $id, $depth);
         return $this->directusUtil->get($requestUrl);
     }
 
