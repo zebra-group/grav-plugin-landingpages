@@ -99,7 +99,7 @@ class LandingpagesPlugin extends Plugin
 
         $UriParams = array_merge(array_filter(explode('/', $requestedUri)));
 
-        if($UriParams[0] === $this->config()['landingpages']['entryslug'] && isset($_GET['audience']) ){
+        if(isset($uriParams[0]) && $UriParams[0] === $this->config()['landingpages']['entryslug'] && isset($_GET['audience']) ){
             $this->redirect($requestedUri.'/'.$_GET['audience'], 301);
         }
 
