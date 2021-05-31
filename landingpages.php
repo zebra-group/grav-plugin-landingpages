@@ -12,6 +12,7 @@ use Grav\Framework\Flex\FlexObject;
 use Grav\Framework\Flex\Interfaces\FlexCollectionInterface;
 use Grav\Framework\Flex\Interfaces\FlexDirectoryInterface;
 use Grav\Plugin\Directus\Utility\DirectusUtility;
+use Grav\Common\Cache;
 
 /**
  * Class LandingpagesPlugin
@@ -175,6 +176,7 @@ class LandingpagesPlugin extends Plugin
                 'status' => '200',
                 'message' => 'all done'
             ], JSON_THROW_ON_ERROR);
+            Cache::clearCache();
             exit(200);
         }
 
@@ -223,6 +225,7 @@ class LandingpagesPlugin extends Plugin
             'status' => 200,
             'message' => 'all done'
         ], JSON_THROW_ON_ERROR);
+        Cache::clearCache();
         exit(200);
     }
 
@@ -336,6 +339,7 @@ class LandingpagesPlugin extends Plugin
             'status' => $response->getStatusCode(),
             'message' => $message
         ], JSON_THROW_ON_ERROR);
+        Cache::clearCache();
         exit($response->getStatusCode());
     }
 
