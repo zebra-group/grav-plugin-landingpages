@@ -10,7 +10,15 @@ landingpages:
     audience: 'id_zbr_audience'
     audienceId: 'id'
     collections:
-      id_zbr_keywords: 'zbr_keywords'
-      id_zbr_landingpage: 'zbr_landingpages'
-      id_zbr_audience: 'zbr_audiences'
-      id_zbr_special_content: 'zbr_keyword_special_content'
+      id_zbr_keywords:
+        tableName: 'zbr_keywords'
+        depth: 4
+      id_zbr_landingpage:
+        tableName: 'zbr_landingpages'
+        depth: 2
+      id_zbr_audience:
+        tableName: 'zbr_audiences'
+        depth: 3
+      id_zbr_special_content:
+        tableName: 'zbr_keyword_special_content'
+        depth: 2

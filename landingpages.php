@@ -201,12 +201,12 @@ class LandingpagesPlugin extends Plugin
         foreach ($collectionArray as $key => $value){
 
             /** @var FlexCollectionInterface $collection */
-            $this->collection = $this->flex->getCollection($value);
+            $this->collection = $this->flex->getCollection($value['tableName']);
 
             /** @var FlexDirectoryInterface $directory */
-            $this->directory = $this->flex->getDirectory($value);
+            $this->directory = $this->flex->getDirectory($value['tableName']);
 
-            $response = $this->requestItem($value);
+            $response = $this->requestItem($value['tableName'], 0, ($value['depth'] ?? 2));
 
             foreach ($response->toArray()['data'] as $item){
                 $object = $this->collection->get($item['id']);
@@ -376,13 +376,10 @@ class LandingpagesPlugin extends Plugin
 
         return '---' . "\n" .
             'title: ' . "'" . htmlentities($dataSet['id_zbr_landingpage']['zbr_headline'], ENT_QUOTES) . "'\n" .
-            /*'routes: '. "\n" .
-            '    aliases: '. "\n" .
-            "        - '/".$dataSet[$this->config()['landingpages']['mapping']['keyword']][$this->config()['landingpages']['mapping']['keywordHash']].'?audience='. $dataSet[$this->config()['landingpages']['mapping']['audience']][$this->config()['landingpages']['mapping']['audienceId']]."'\n".*/
             'dataset:' . "\n" .
-            '    '.$mappingCollections['id_zbr_keywords'].': ' . $dataSet['id_zbr_keywords']['id'] ."\n" .
-            '    '.$mappingCollections['id_zbr_landingpage'].': ' . $dataSet['id_zbr_landingpage']['id'] ."\n" .
-            '    '.$mappingCollections['id_zbr_audience'].': ' . $dataSet['id_zbr_audience']['id'] ."\n" .
+            '    '.$mappingCollections['id_zbr_keywords']['tableName'].': ' . $dataSet['id_zbr_keywords']['id'] ."\n" .
+            '    '.$mappingCollections['id_zbr_landingpage']['tableName'].': ' . $dataSet['id_zbr_landingpage']['id'] ."\n" .
+            '    '.$mappingCollections['id_zbr_audience']['tableName'].': ' . $dataSet['id_zbr_audience']['id'] ."\n" .
             '---';
     }
 
