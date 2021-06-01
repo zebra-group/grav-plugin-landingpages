@@ -451,7 +451,6 @@ class LandingpagesPlugin extends Plugin
                     }
                 }
                 $file->save(array_values($array));
-                $file->save(array_values($array));
             }
 
             header( 'Content-type: application/csv' );
