@@ -158,12 +158,20 @@ class LandingpagesPlugin extends Plugin
             /** @var FlexDirectoryInterface $directory */
             $this->directory = $this->flex->getDirectory($requestBody['collection']);
 
+            $depth = 2;
+
+            foreach($this->config()['landingpages']['mapping']['collections'] as $key => $value) {
+                if($value['tableName'] === $requestBody['collection']) {
+                    $depth = $value['depth'];
+                }
+            }
+
             switch ($requestBody['action']) {
                 case "create":
-                    $statusCode = $this->createFlexObject($requestBody['collection'], $requestBody['item']);
+                    $statusCode = $this->createFlexObject($requestBody['collection'], $requestBody['item'], $depth);
                     break;
                 case "update":
-                    $statusCode = $this->updateFlexObject($requestBody['collection'], $requestBody['item']);
+                    $statusCode = $this->updateFlexObject($requestBody['collection'], $requestBody['item'], $depth);
                     break;
                 case "delete":
                     $statusCode = $this->deleteFlexObject($requestBody['collection'], $requestBody['item']);
@@ -232,6 +240,7 @@ class LandingpagesPlugin extends Plugin
     /**
      * @param $collection
      * @param $id
+     * @param int $depth
      * @return int
      * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
      * @throws \Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface
@@ -239,8 +248,8 @@ class LandingpagesPlugin extends Plugin
      * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
      * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
      */
-    private function createFlexObject($collection, $id) {
-        $response = $this->requestItem($collection, $id);
+    private function createFlexObject($collection, $id, int $depth = 2) {
+        $response = $this->requestItem($collection, $id, $depth);
 
         if($response->getStatusCode() === 200) {
             $data = $response->toArray()['data'];
@@ -254,6 +263,7 @@ class LandingpagesPlugin extends Plugin
     /**
      * @param $collection
      * @param $ids
+     * @param int $depth
      * @return int
      * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
      * @throws \Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface
@@ -261,9 +271,9 @@ class LandingpagesPlugin extends Plugin
      * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
      * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
      */
-    private function updateFlexObject($collection, $ids) {
+    private function updateFlexObject($collection, $ids, int $depth = 2) {
         foreach ($ids as $id) {
-            $response = $this->requestItem($collection, $id);
+            $response = $this->requestItem($collection, $id, $depth);
             if($response->getStatusCode() === 200) {
                 $object = $this->collection->get($id);
 
