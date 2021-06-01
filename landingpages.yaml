@@ -2,7 +2,8 @@ enabled: true
 landingpages:
   entryslug: 'landingpages'
   entrypoint: 'user/pages/03.landingpages'
-  export: 'user/data/scheduler/keywords'
+  exportFilename: 'keywords'
+  exportPath: 'user/data/scheduler/'
   entrytable: 'zbr_keywords2landingpages2audiences'
   mapping:
     keyword: 'id_zbr_keywords'
