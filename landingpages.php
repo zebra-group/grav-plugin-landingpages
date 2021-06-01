@@ -158,12 +158,20 @@ class LandingpagesPlugin extends Plugin
             /** @var FlexDirectoryInterface $directory */
             $this->directory = $this->flex->getDirectory($requestBody['collection']);
 
+            $depth = 2;
+
+            foreach($this->config()['landingpages']['mapping']['collections'] as $key => $value) {
+                if($value['tableName'] === $requestBody['collection']) {
+                    $depth = $value['depth'];
+                }
+            }
+
             switch ($requestBody['action']) {
                 case "create":
-                    $statusCode = $this->createFlexObject($requestBody['collection'], $requestBody['item']);
+                    $statusCode = $this->createFlexObject($requestBody['collection'], $requestBody['item'], $depth);
                     break;
                 case "update":
-                    $statusCode = $this->updateFlexObject($requestBody['collection'], $requestBody['item']);
+                    $statusCode = $this->updateFlexObject($requestBody['collection'], $requestBody['item'], $depth);
                     break;
                 case "delete":
                     $statusCode = $this->deleteFlexObject($requestBody['collection'], $requestBody['item']);
@@ -201,12 +209,12 @@ class LandingpagesPlugin extends Plugin
         foreach ($collectionArray as $key => $value){
 
             /** @var FlexCollectionInterface $collection */
-            $this->collection = $this->flex->getCollection($value);
+            $this->collection = $this->flex->getCollection($value['tableName']);
 
             /** @var FlexDirectoryInterface $directory */
-            $this->directory = $this->flex->getDirectory($value);
+            $this->directory = $this->flex->getDirectory($value['tableName']);
 
-            $response = $this->requestItem($value);
+            $response = $this->requestItem($value['tableName'], 0, ($value['depth'] ?? 2));
 
             foreach ($response->toArray()['data'] as $item){
                 $object = $this->collection->get($item['id']);
@@ -232,6 +240,7 @@ class LandingpagesPlugin extends Plugin
     /**
      * @param $collection
      * @param $id
+     * @param int $depth
      * @return int
      * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
      * @throws \Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface
@@ -239,8 +248,8 @@ class LandingpagesPlugin extends Plugin
      * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
      * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
      */
-    private function createFlexObject($collection, $id) {
-        $response = $this->requestItem($collection, $id);
+    private function createFlexObject($collection, $id, int $depth = 2) {
+        $response = $this->requestItem($collection, $id, $depth);
 
         if($response->getStatusCode() === 200) {
             $data = $response->toArray()['data'];
@@ -254,6 +263,7 @@ class LandingpagesPlugin extends Plugin
     /**
      * @param $collection
      * @param $ids
+     * @param int $depth
      * @return int
      * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
      * @throws \Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface
@@ -261,9 +271,9 @@ class LandingpagesPlugin extends Plugin
      * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
      * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
      */
-    private function updateFlexObject($collection, $ids) {
+    private function updateFlexObject($collection, $ids, int $depth = 2) {
         foreach ($ids as $id) {
-            $response = $this->requestItem($collection, $id);
+            $response = $this->requestItem($collection, $id, $depth);
             if($response->getStatusCode() === 200) {
                 $object = $this->collection->get($id);
 
@@ -376,13 +386,10 @@ class LandingpagesPlugin extends Plugin
 
         return '---' . "\n" .
             'title: ' . "'" . htmlentities($dataSet['id_zbr_landingpage']['zbr_headline'], ENT_QUOTES) . "'\n" .
-            /*'routes: '. "\n" .
-            '    aliases: '. "\n" .
-            "        - '/".$dataSet[$this->config()['landingpages']['mapping']['keyword']][$this->config()['landingpages']['mapping']['keywordHash']].'?audience='. $dataSet[$this->config()['landingpages']['mapping']['audience']][$this->config()['landingpages']['mapping']['audienceId']]."'\n".*/
             'dataset:' . "\n" .
-            '    '.$mappingCollections['id_zbr_keywords'].': ' . $dataSet['id_zbr_keywords']['id'] ."\n" .
-            '    '.$mappingCollections['id_zbr_landingpage'].': ' . $dataSet['id_zbr_landingpage']['id'] ."\n" .
-            '    '.$mappingCollections['id_zbr_audience'].': ' . $dataSet['id_zbr_audience']['id'] ."\n" .
+            '    '.$mappingCollections['id_zbr_keywords']['tableName'].': ' . $dataSet['id_zbr_keywords']['id'] ."\n" .
+            '    '.$mappingCollections['id_zbr_landingpage']['tableName'].': ' . $dataSet['id_zbr_landingpage']['id'] ."\n" .
+            '    '.$mappingCollections['id_zbr_audience']['tableName'].': ' . $dataSet['id_zbr_audience']['id'] ."\n" .
             '---';
     }
 
@@ -406,35 +413,51 @@ class LandingpagesPlugin extends Plugin
      */
     private function exportCSV(){
 
-        $response = $this->requestItem($this->config()['landingpages']['entrytable'], 0, 4);
 
-        if($response->getStatusCode() === 200) {
-            $formatter = new CsvFormatter(['file_extension' => '.csv', 'delimiter' => ";"]);
-            $file = new CsvFile($this->config()['landingpages']['export'].'_'.date('Y-m-d_H:i:s'), $formatter);
 
-            foreach ($response->toArray()['data'] as $landingpage){
-                $array[] = [
-                    'Hash' => $landingpage[$this->config()['landingpages']['mapping']['keyword']][$this->config()['landingpages']['mapping']['keywordHash']],
-                    'Keyword' => $landingpage[$this->config()['landingpages']['mapping']['keyword']]['zbr_keyword'],
-                    'Slug' => $landingpage['id_zbr_landingpage']['zbr_slug'],
-                    'Überschrift' => $landingpage['id_zbr_landingpage']['zbr_headline'],
-                    'Kurztext' => $landingpage['id_zbr_landingpage']['zbr_short_text'],
-                    'Zielgruppe' => $landingpage['id_zbr_audience']['zbr_audience_name'],
-                ];
+        if(isset($_GET['token'])){
+            $this->directusUtil->setToken($_GET['token']);
+            $response = $this->requestItem($this->config()['landingpages']['entrytable'], 0, 4);
+
+            $filename = $this->config()['landingpages']['exportFilename'].'_'.date('Y-m-d_H:i:s').'.csv';
+
+
+            if($response->getStatusCode() === 200) {
+                $formatter = new CsvFormatter(['file_extension' => '.csv', 'delimiter' => ";"]);
+                $file = new CsvFile($this->config()['landingpages']['exportPath'].$filename, $formatter);
+
+                $exportSettings = $this->requestItem($this->config()['landingpages']['confTable']);
+                $array = [];
+
+                $settings = array_values(array_filter($exportSettings->toArray()['data']['zbr_setting'], function ($match){
+                    if($match['key'] === 'mappingCSV'){
+                        return $match;
+                    }
+                }));
+
+                foreach ($response->toArray()['data'] as $landingpage){
+
+                    foreach ($settings[0]['value'] as $key => $value){
+                        $params = explode('.', $value);
+                        $array[$landingpage['id']][$key]  = $landingpage[$params[0]][$params[1]];
+                    }
+                }
+                $file->save(array_values($array));
             }
-            $file->save($array);
-            $message = 'file created';
+
+            header( 'Content-type: application/csv' );
+            header( 'Content-Disposition: attachment; filename="'.$filename.'"' );
+            readfile( $this->config()['landingpages']['exportPath'].$filename );
+
+            exit(200);
         }
         else{
-            $message = 'something went wrong';
+            echo json_encode([
+                'status' => 403,
+                'message' => 'Bad Request'
+            ], JSON_THROW_ON_ERROR);
+
+            exit(403);
         }
-
-        echo json_encode([
-            'status' => $response->getStatusCode(),
-            'message' => $message
-        ], JSON_THROW_ON_ERROR);
-
-        exit($response->getStatusCode());
-
     }
 }
