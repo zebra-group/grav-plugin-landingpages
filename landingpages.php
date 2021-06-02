@@ -413,33 +413,41 @@ class LandingpagesPlugin extends Plugin
      */
     private function exportCSV(){
 
-
-
         if(isset($_GET['token'])){
             $this->directusUtil->setToken($_GET['token']);
-            $response = $this->requestItem($this->config()['landingpages']['entrytable'], 0, 4);
 
-            $filename = $this->config()['landingpages']['exportFilename'].'_'.date('Y-m-d_H:i:s').'.csv';
+            $exportSettings = $this->requestItem($this->config()['landingpages']['confTable']);
+            $array = [];
 
+            $settings = array_values(array_filter($exportSettings->toArray()['data']['zbr_setting'], function ($match){
+                if($match['key'] === 'mappingCSV'){
+                    return $match;
+                }
+            }));
+
+            $settings[0]['value']['entrytable'] ? $entrytable = $settings[0]['value']['entrytable'] : $entrytable = $this->config()['landingpages']['entrytable'];
+            unset($settings[0]['value']['entrytable']);
+
+            $response = $this->requestItem($entrytable, 0, 4);
 
             if($response->getStatusCode() === 200) {
+                $filename = $this->config()['landingpages']['exportFilename'].'_'.date('Y-m-d_H:i:s').'.csv';
                 $formatter = new CsvFormatter(['file_extension' => '.csv', 'delimiter' => ";"]);
                 $file = new CsvFile($this->config()['landingpages']['exportPath'].$filename, $formatter);
 
-                $exportSettings = $this->requestItem($this->config()['landingpages']['confTable']);
-                $array = [];
-
-                $settings = array_values(array_filter($exportSettings->toArray()['data']['zbr_setting'], function ($match){
-                    if($match['key'] === 'mappingCSV'){
-                        return $match;
-                    }
-                }));
-
-                foreach ($response->toArray()['data'] as $landingpage){
-
+                foreach ($response->toArray()['data'] as $item){
                     foreach ($settings[0]['value'] as $key => $value){
                         $params = explode('.', $value);
-                        $array[$landingpage['id']][$key]  = $landingpage[$params[0]][$params[1]];
+
+                        if(isset($item[$params[0]]) && isset($params[1]) && isset($item[$params[0]][$params[1]])){
+                            $array[$item['id']][$key]  = $item[$params[0]][$params[1]];
+                        }
+                        elseif (isset($item[$params[0]])){
+                            $array[$item['id']][$key]  = $item[$params[0]];
+                        }
+                        else{
+                            $array[$item['id']][$key]  = '';
+                        }
                     }
                 }
                 $file->save(array_values($array));
