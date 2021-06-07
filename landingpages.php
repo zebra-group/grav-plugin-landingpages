@@ -99,10 +99,13 @@ class LandingpagesPlugin extends Plugin
     public function onPageInitialized() {
         $requestedUri = $this->grav['uri']->path();
 
-        $UriParams = array_merge(array_filter(explode('/', $requestedUri)));
+        $uriParams = array_merge(array_filter(explode('/', $requestedUri)));
 
-        if(isset($uriParams[0]) && $UriParams[0] === $this->config()['landingpages']['entryslug'] && isset($_GET['audience']) ){
+        if(isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && isset($_GET['audience']) ){
             $this->redirect($requestedUri.'/'.$_GET['audience'], 301);
+        }
+        elseif ($uriParams[0] && $uriParams[0] === $this->config()['landingpages']['entryslug'] && !isset($uriParams[2])){
+            $this->redirect($requestedUri.'/1', 301);
         }
 
         /** @var Flex $flex */
