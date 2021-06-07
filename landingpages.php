@@ -13,6 +13,7 @@ use Grav\Framework\Flex\Interfaces\FlexCollectionInterface;
 use Grav\Framework\Flex\Interfaces\FlexDirectoryInterface;
 use Grav\Plugin\Directus\Utility\DirectusUtility;
 use Grav\Common\Cache;
+use function Couchbase\defaultDecoder;
 
 /**
  * Class LandingpagesPlugin
@@ -98,10 +99,13 @@ class LandingpagesPlugin extends Plugin
     public function onPageInitialized() {
         $requestedUri = $this->grav['uri']->path();
 
-        $UriParams = array_merge(array_filter(explode('/', $requestedUri)));
+        $uriParams = array_merge(array_filter(explode('/', $requestedUri)));
 
-        if(isset($uriParams[0]) && $UriParams[0] === $this->config()['landingpages']['entryslug'] && isset($_GET['audience']) ){
+        if(isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && isset($_GET['audience']) ){
             $this->redirect($requestedUri.'/'.$_GET['audience'], 301);
+        }
+        elseif ($uriParams[0] && $uriParams[0] === $this->config()['landingpages']['entryslug'] && !isset($uriParams[2])){
+            $this->redirect($requestedUri.'/1', 301);
         }
 
         /** @var Flex $flex */
@@ -419,11 +423,23 @@ class LandingpagesPlugin extends Plugin
             $exportSettings = $this->requestItem($this->config()['landingpages']['confTable']);
             $array = [];
 
-            $settings = array_values(array_filter($exportSettings->toArray()['data']['zbr_setting'], function ($match){
-                if($match['key'] === 'mappingCSV'){
+            $settings = array_filter($exportSettings->toArray()['data']['zbr_setting'], function ($match){
+                $settingName = $_GET[ 'conf' ] ?? $this->config()[ 'landingpages' ][ 'entryConf' ];
+                if($match['key'] === $settingName){
                     return $match;
                 }
-            }));
+            });
+
+            if(!empty($settings)){
+                array_values($settings);
+            }
+            else{
+                echo json_encode([
+                    'status' => 403,
+                    'message' => 'Bad Request'
+                ], JSON_THROW_ON_ERROR);
+                exit(403);
+            }
 
             $settings[0]['value']['entrytable'] ? $entrytable = $settings[0]['value']['entrytable'] : $entrytable = $this->config()['landingpages']['entrytable'];
             unset($settings[0]['value']['entrytable']);
@@ -436,6 +452,7 @@ class LandingpagesPlugin extends Plugin
                 $file = new CsvFile($this->config()['landingpages']['exportPath'].$filename, $formatter);
 
                 foreach ($response->toArray()['data'] as $item){
+
                     foreach ($settings[0]['value'] as $key => $value){
                         $params = explode('.', $value);
 
