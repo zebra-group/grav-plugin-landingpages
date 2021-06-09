@@ -104,7 +104,7 @@ class LandingpagesPlugin extends Plugin
         if(isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && isset($_GET['audience']) ){
             $this->redirect($requestedUri.'/'.$_GET['audience'], 301);
         }
-        elseif ($uriParams[0] && $uriParams[0] === $this->config()['landingpages']['entryslug'] && !isset($uriParams[2])){
+        elseif (isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && !isset($uriParams[2])){
             $this->redirect($requestedUri.'/1', 301);
         }
 
