@@ -456,7 +456,10 @@ class LandingpagesPlugin extends Plugin
                     foreach ($settings[0]['value'] as $key => $value){
                         $params = explode('.', $value);
 
-                        if(isset($item[$params[0]]) && isset($params[1]) && isset($item[$params[0]][$params[1]])){
+                        if(isset($item[$params[0]]) && isset($params[2]) && isset($item[$params[0]][$params[1]][$params[2]])){
+                            $array[$item['id']][$key]  = $item[$params[0]][$params[1]][$params[2]];
+                        }
+                        elseif (isset($item[$params[0]]) && isset($params[1]) && isset($item[$params[0]][$params[1]])){
                             $array[$item['id']][$key]  = $item[$params[0]][$params[1]];
                         }
                         elseif (isset($item[$params[0]])){
