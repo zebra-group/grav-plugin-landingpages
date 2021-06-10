@@ -393,7 +393,7 @@ class LandingpagesPlugin extends Plugin
             'dataset:' . "\n" .
             '    '.$mappingCollections['id_zbr_keywords']['tableName'].': ' . $dataSet['id_zbr_keywords']['id'] ."\n" .
             '    '.$mappingCollections['id_zbr_landingpage']['tableName'].': ' . $dataSet['id_zbr_landingpage']['id'] ."\n" .
-            '    '.$mappingCollections['id_zbr_audience']['tableName'].': ' . $dataSet['id_zbr_audience']['id'] ."\n" .
+            '    '.$mappingCollections['id_zbr_audience']['tableName'].': ' . $dataSet['id_zbr_landingpage']['id_zbr_audiences']['id'] ."\n" .
             '---';
     }
 
