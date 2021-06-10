@@ -339,7 +339,7 @@ class LandingpagesPlugin extends Plugin
                 $this->createFile(
                     $this->setFileHeaders($landingpage),
                     $landingpage[$this->config()['landingpages']['mapping']['keyword']][$this->config()['landingpages']['mapping']['keywordHash']],
-                    $landingpage[$this->config()['landingpages']['mapping']['audience']][$this->config()['landingpages']['mapping']['audienceId']]
+                    $landingpage['id_zbr_landingpage']['id_zbr_audiences']['id']
                 );
                 $i++;
             }
