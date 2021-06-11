@@ -336,12 +336,15 @@ class LandingpagesPlugin extends Plugin
         if($response->getStatusCode() === 200){
             $i = 0;
             foreach ($response->toArray()['data'] as $landingpage){
-                $this->createFile(
-                    $this->setFileHeaders($landingpage),
-                    $landingpage[$this->config()['landingpages']['mapping']['keyword']][$this->config()['landingpages']['mapping']['keywordHash']],
-                    $landingpage['id_zbr_landingpage']['id_zbr_audiences']['id']
-                );
-                $i++;
+                if($landingpage['id_zbr_landingpage'] && $landingpage[$this->config()['landingpages']['mapping']['keyword']]){
+                    $this->createFile(
+                        $this->setFileHeaders($landingpage),
+                        $landingpage[$this->config()['landingpages']['mapping']['keyword']][$this->config()['landingpages']['mapping']['keywordHash']],
+                        $landingpage['id_zbr_landingpage']['id_zbr_audiences']['id']
+                    );
+
+                    $i++;
+                }
             }
             $message = $i.' elements created';
         }
@@ -386,15 +389,19 @@ class LandingpagesPlugin extends Plugin
      */
     private function setFileHeaders(array $dataSet) {
 
+
         $mappingCollections = $this->config()['landingpages']['mapping']['collections'];
 
-        return '---' . "\n" .
-            'title: ' . "'" . htmlentities($dataSet['id_zbr_landingpage']['zbr_headline'], ENT_QUOTES) . "'\n" .
-            'dataset:' . "\n" .
-            '    '.$mappingCollections['id_zbr_keywords']['tableName'].': ' . $dataSet['id_zbr_keywords']['id'] ."\n" .
-            '    '.$mappingCollections['id_zbr_landingpage']['tableName'].': ' . $dataSet['id_zbr_landingpage']['id'] ."\n" .
-            '    '.$mappingCollections['id_zbr_audience']['tableName'].': ' . $dataSet['id_zbr_landingpage']['id_zbr_audiences']['id'] ."\n" .
-            '---';
+
+        if(isset($dataSet['id_zbr_landingpage']) && isset($dataSet['id_zbr_keywords'])){
+            return '---' . "\n" .
+                'title: ' . "'" . htmlentities($dataSet['id_zbr_landingpage']['zbr_headline'], ENT_QUOTES) . "'\n" .
+                'dataset:' . "\n" .
+                '    '.$mappingCollections['id_zbr_keywords']['tableName'].': ' . $dataSet['id_zbr_keywords']['id'] ."\n" .
+                '    '.$mappingCollections['id_zbr_landingpage']['tableName'].': ' . $dataSet['id_zbr_landingpage']['id'] ."\n" .
+                '    '.$mappingCollections['id_zbr_audience']['tableName'].': ' . $dataSet['id_zbr_landingpage']['id_zbr_audiences']['id'] ."\n" .
+                '---';
+        }
     }
 
     /**
