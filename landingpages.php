@@ -333,14 +333,15 @@ class LandingpagesPlugin extends Plugin
     private function crawlLandingpages(){
         $response = $this->requestItem($this->config()['landingpages']['entrytable'], 0, 4);
 
+
         if($response->getStatusCode() === 200){
             $i = 0;
             foreach ($response->toArray()['data'] as $landingpage){
-                if($landingpage['id_zbr_landingpage'] && $landingpage[$this->config()['landingpages']['mapping']['keyword']]){
+                if(isset($landingpage['id_zbr_landingpages']) && $landingpage[$this->config()['landingpages']['mapping']['keyword']]){
                     $this->createFile(
                         $this->setFileHeaders($landingpage),
                         $landingpage[$this->config()['landingpages']['mapping']['keyword']][$this->config()['landingpages']['mapping']['keywordHash']],
-                        $landingpage['id_zbr_landingpage']['id_zbr_audiences']['id']
+                        $landingpage['id_zbr_landingpages']['id_zbr_audiences']['id']
                     );
 
                     $i++;
@@ -393,13 +394,13 @@ class LandingpagesPlugin extends Plugin
         $mappingCollections = $this->config()['landingpages']['mapping']['collections'];
 
 
-        if(isset($dataSet['id_zbr_landingpage']) && isset($dataSet['id_zbr_keywords'])){
+        if(isset($dataSet['id_zbr_landingpages']) && isset($dataSet['id_zbr_keywords'])){
             return '---' . "\n" .
-                'title: ' . "'" . htmlentities($dataSet['id_zbr_landingpage']['zbr_headline'], ENT_QUOTES) . "'\n" .
+                'title: ' . "'" . htmlentities($dataSet['id_zbr_landingpages']['zbr_headline'], ENT_QUOTES) . "'\n" .
                 'dataset:' . "\n" .
                 '    '.$mappingCollections['id_zbr_keywords']['tableName'].': ' . $dataSet['id_zbr_keywords']['id'] ."\n" .
-                '    '.$mappingCollections['id_zbr_landingpage']['tableName'].': ' . $dataSet['id_zbr_landingpage']['id'] ."\n" .
-                '    '.$mappingCollections['id_zbr_audience']['tableName'].': ' . $dataSet['id_zbr_landingpage']['id_zbr_audiences']['id'] ."\n" .
+                '    '.$mappingCollections['id_zbr_landingpages']['tableName'].': ' . $dataSet['id_zbr_landingpages']['id'] ."\n" .
+                '    '.$mappingCollections['id_zbr_audience']['tableName'].': ' . $dataSet['id_zbr_landingpages']['id_zbr_audiences']['id'] ."\n" .
                 '---';
         }
     }

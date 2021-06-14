@@ -15,7 +15,7 @@ landingpages:
       id_zbr_keywords:
         tableName: 'zbr_keywords'
         depth: 4
-      id_zbr_landingpage:
+      id_zbr_landingpages:
         tableName: 'zbr_landingpages'
         depth: 2
       id_zbr_audience:
