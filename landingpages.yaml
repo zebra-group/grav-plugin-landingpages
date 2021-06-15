@@ -5,6 +5,7 @@ landingpages:
   exportFilename: 'keywords'
   exportPath: 'user/data/scheduler/'
   entrytable: 'zbr_keywords2landingpages2audiences'
+  entryConf: 'mappingCSV'
   mapping:
     keyword: 'id_zbr_keywords'
     keywordHash: 'zbr_keyword_hash'
@@ -14,7 +15,7 @@ landingpages:
       id_zbr_keywords:
         tableName: 'zbr_keywords'
         depth: 4
-      id_zbr_landingpage:
+      id_zbr_landingpages:
         tableName: 'zbr_landingpages'
         depth: 2
       id_zbr_audience:

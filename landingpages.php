@@ -13,6 +13,7 @@ use Grav\Framework\Flex\Interfaces\FlexCollectionInterface;
 use Grav\Framework\Flex\Interfaces\FlexDirectoryInterface;
 use Grav\Plugin\Directus\Utility\DirectusUtility;
 use Grav\Common\Cache;
+use function Couchbase\defaultDecoder;
 
 /**
  * Class LandingpagesPlugin
@@ -98,10 +99,13 @@ class LandingpagesPlugin extends Plugin
     public function onPageInitialized() {
         $requestedUri = $this->grav['uri']->path();
 
-        $UriParams = array_merge(array_filter(explode('/', $requestedUri)));
+        $uriParams = array_merge(array_filter(explode('/', $requestedUri)));
 
-        if(isset($uriParams[0]) && $UriParams[0] === $this->config()['landingpages']['entryslug'] && isset($_GET['audience']) ){
+        if(isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && isset($_GET['audience']) ){
             $this->redirect($requestedUri.'/'.$_GET['audience'], 301);
+        }
+        elseif (isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && !isset($uriParams[2])){
+            $this->redirect($requestedUri.'/1', 301);
         }
 
         /** @var Flex $flex */
@@ -329,15 +333,19 @@ class LandingpagesPlugin extends Plugin
     private function crawlLandingpages(){
         $response = $this->requestItem($this->config()['landingpages']['entrytable'], 0, 4);
 
+
         if($response->getStatusCode() === 200){
             $i = 0;
             foreach ($response->toArray()['data'] as $landingpage){
-                $this->createFile(
-                    $this->setFileHeaders($landingpage),
-                    $landingpage[$this->config()['landingpages']['mapping']['keyword']][$this->config()['landingpages']['mapping']['keywordHash']],
-                    $landingpage[$this->config()['landingpages']['mapping']['audience']][$this->config()['landingpages']['mapping']['audienceId']]
-                );
-                $i++;
+                if(isset($landingpage['id_zbr_landingpages']) && $landingpage[$this->config()['landingpages']['mapping']['keyword']]){
+                    $this->createFile(
+                        $this->setFileHeaders($landingpage),
+                        $landingpage[$this->config()['landingpages']['mapping']['keyword']][$this->config()['landingpages']['mapping']['keywordHash']],
+                        $landingpage['id_zbr_landingpages']['id_zbr_audiences']['id']
+                    );
+
+                    $i++;
+                }
             }
             $message = $i.' elements created';
         }
@@ -382,15 +390,19 @@ class LandingpagesPlugin extends Plugin
      */
     private function setFileHeaders(array $dataSet) {
 
+
         $mappingCollections = $this->config()['landingpages']['mapping']['collections'];
 
-        return '---' . "\n" .
-            'title: ' . "'" . htmlentities($dataSet['id_zbr_landingpage']['zbr_headline'], ENT_QUOTES) . "'\n" .
-            'dataset:' . "\n" .
-            '    '.$mappingCollections['id_zbr_keywords']['tableName'].': ' . $dataSet['id_zbr_keywords']['id'] ."\n" .
-            '    '.$mappingCollections['id_zbr_landingpage']['tableName'].': ' . $dataSet['id_zbr_landingpage']['id'] ."\n" .
-            '    '.$mappingCollections['id_zbr_audience']['tableName'].': ' . $dataSet['id_zbr_audience']['id'] ."\n" .
-            '---';
+
+        if(isset($dataSet['id_zbr_landingpages']) && isset($dataSet['id_zbr_keywords'])){
+            return '---' . "\n" .
+                'title: ' . "'" . htmlentities($dataSet['id_zbr_landingpages']['zbr_headline'], ENT_QUOTES) . "'\n" .
+                'dataset:' . "\n" .
+                '    '.$mappingCollections['id_zbr_keywords']['tableName'].': ' . $dataSet['id_zbr_keywords']['id'] ."\n" .
+                '    '.$mappingCollections['id_zbr_landingpages']['tableName'].': ' . $dataSet['id_zbr_landingpages']['id'] ."\n" .
+                '    '.$mappingCollections['id_zbr_audience']['tableName'].': ' . $dataSet['id_zbr_landingpages']['id_zbr_audiences']['id'] ."\n" .
+                '---';
+        }
     }
 
     /**
@@ -413,33 +425,57 @@ class LandingpagesPlugin extends Plugin
      */
     private function exportCSV(){
 
-
-
         if(isset($_GET['token'])){
             $this->directusUtil->setToken($_GET['token']);
-            $response = $this->requestItem($this->config()['landingpages']['entrytable'], 0, 4);
 
-            $filename = $this->config()['landingpages']['exportFilename'].'_'.date('Y-m-d_H:i:s').'.csv';
+            $exportSettings = $this->requestItem($this->config()['landingpages']['confTable']);
+            $array = [];
 
+            $settings = array_filter($exportSettings->toArray()['data']['zbr_setting'], function ($match){
+                $settingName = $_GET[ 'conf' ] ?? $this->config()[ 'landingpages' ][ 'entryConf' ];
+                if($match['key'] === $settingName){
+                    return $match;
+                }
+            });
+
+            if(!empty($settings)){
+                array_values($settings);
+            }
+            else{
+                echo json_encode([
+                    'status' => 403,
+                    'message' => 'Bad Request'
+                ], JSON_THROW_ON_ERROR);
+                exit(403);
+            }
+
+            $settings[0]['value']['entrytable'] ? $entrytable = $settings[0]['value']['entrytable'] : $entrytable = $this->config()['landingpages']['entrytable'];
+            unset($settings[0]['value']['entrytable']);
+
+            $response = $this->requestItem($entrytable, 0, 4);
 
             if($response->getStatusCode() === 200) {
+                $filename = $this->config()['landingpages']['exportFilename'].'_'.date('Y-m-d_H:i:s').'.csv';
                 $formatter = new CsvFormatter(['file_extension' => '.csv', 'delimiter' => ";"]);
                 $file = new CsvFile($this->config()['landingpages']['exportPath'].$filename, $formatter);
 
-                $exportSettings = $this->requestItem($this->config()['landingpages']['confTable']);
-                $array = [];
-
-                $settings = array_values(array_filter($exportSettings->toArray()['data']['zbr_setting'], function ($match){
-                    if($match['key'] === 'mappingCSV'){
-                        return $match;
-                    }
-                }));
-
-                foreach ($response->toArray()['data'] as $landingpage){
+                foreach ($response->toArray()['data'] as $item){
 
                     foreach ($settings[0]['value'] as $key => $value){
                         $params = explode('.', $value);
-                        $array[$landingpage['id']][$key]  = $landingpage[$params[0]][$params[1]];
+
+                        if(isset($item[$params[0]]) && isset($params[2]) && isset($item[$params[0]][$params[1]][$params[2]])){
+                            $array[$item['id']][$key]  = $item[$params[0]][$params[1]][$params[2]];
+                        }
+                        elseif (isset($item[$params[0]]) && isset($params[1]) && isset($item[$params[0]][$params[1]])){
+                            $array[$item['id']][$key]  = $item[$params[0]][$params[1]];
+                        }
+                        elseif (isset($item[$params[0]])){
+                            $array[$item['id']][$key]  = $item[$params[0]];
+                        }
+                        else{
+                            $array[$item['id']][$key]  = '';
+                        }
                     }
                 }
                 $file->save(array_values($array));
