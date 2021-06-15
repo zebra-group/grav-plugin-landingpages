@@ -318,8 +318,9 @@ class LandingpagesPlugin extends Plugin
      * @return \Symfony\Contracts\HttpClient\ResponseInterface
      * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
      */
-    private function requestItem($collection, $id = 0, $depth = 2) {
-        $requestUrl = $this->directusUtil->generateRequestUrl($collection, $id, $depth);
+    private function requestItem($collection, $id = 0, $depth = 2, $filters = []) {
+
+        $requestUrl = $this->directusUtil->generateRequestUrl($collection, $id, $depth, $filters);
         return $this->directusUtil->get($requestUrl);
     }
 
@@ -331,7 +332,18 @@ class LandingpagesPlugin extends Plugin
      * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
      */
     private function crawlLandingpages(){
-        $response = $this->requestItem($this->config()['landingpages']['entrytable'], 0, 4);
+        $filters =[
+            'id_zbr_keywords' => [
+                'operator' => '_nnull',
+                'value' => 'true',
+            ],
+            'id_zbr_landingpages' => [
+                'operator' => '_nnull',
+                'value' => 'true',
+            ],
+        ];
+
+        $response = $this->requestItem($this->config()['landingpages']['entrytable'], 0, 2, $filters);
 
 
         if($response->getStatusCode() === 200){
@@ -341,7 +353,7 @@ class LandingpagesPlugin extends Plugin
                     $this->createFile(
                         $this->setFileHeaders($landingpage),
                         $landingpage[$this->config()['landingpages']['mapping']['keyword']][$this->config()['landingpages']['mapping']['keywordHash']],
-                        $landingpage['id_zbr_landingpages']['id_zbr_audiences']['id']
+                        $landingpage['id_zbr_landingpages']['id_zbr_audiences']
                     );
 
                     $i++;
@@ -400,7 +412,7 @@ class LandingpagesPlugin extends Plugin
                 'dataset:' . "\n" .
                 '    '.$mappingCollections['id_zbr_keywords']['tableName'].': ' . $dataSet['id_zbr_keywords']['id'] ."\n" .
                 '    '.$mappingCollections['id_zbr_landingpages']['tableName'].': ' . $dataSet['id_zbr_landingpages']['id'] ."\n" .
-                '    '.$mappingCollections['id_zbr_audience']['tableName'].': ' . $dataSet['id_zbr_landingpages']['id_zbr_audiences']['id'] ."\n" .
+                '    '.$mappingCollections['id_zbr_audience']['tableName'].': ' . $dataSet['id_zbr_landingpages']['id_zbr_audiences'] ."\n" .
                 '---';
         }
     }
@@ -452,7 +464,18 @@ class LandingpagesPlugin extends Plugin
             $settings[0]['value']['entrytable'] ? $entrytable = $settings[0]['value']['entrytable'] : $entrytable = $this->config()['landingpages']['entrytable'];
             unset($settings[0]['value']['entrytable']);
 
-            $response = $this->requestItem($entrytable, 0, 4);
+            $filters =[
+                'id_zbr_keywords' => [
+                    'operator' => '_nnull',
+                    'value' => 'true',
+                ],
+                'id_zbr_landingpages' => [
+                    'operator' => '_nnull',
+                    'value' => 'true',
+                ],
+            ];
+
+            $response = $this->requestItem($entrytable, 0, 3, $filters);
 
             if($response->getStatusCode() === 200) {
                 $filename = $this->config()['landingpages']['exportFilename'].'_'.date('Y-m-d_H:i:s').'.csv';
