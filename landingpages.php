@@ -13,6 +13,8 @@ use Grav\Framework\Flex\Interfaces\FlexCollectionInterface;
 use Grav\Framework\Flex\Interfaces\FlexDirectoryInterface;
 use Grav\Plugin\Directus\Utility\DirectusUtility;
 use Grav\Common\Cache;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use function Couchbase\defaultDecoder;
 
 /**
@@ -156,6 +158,7 @@ class LandingpagesPlugin extends Plugin
         $statusCode = 0;
 
         if(isset($requestBody['collection'])) {
+
             /** @var FlexCollectionInterface $collection */
             $this->collection = $this->flex->getCollection($requestBody['collection']);
 
@@ -278,6 +281,7 @@ class LandingpagesPlugin extends Plugin
     private function updateFlexObject($collection, $ids, int $depth = 2) {
         foreach ($ids as $id) {
             $response = $this->requestItem($collection, $id, $depth);
+
             if($response->getStatusCode() === 200) {
                 $object = $this->collection->get($id);
 
@@ -332,6 +336,16 @@ class LandingpagesPlugin extends Plugin
      * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
      */
     private function crawlLandingpages(){
+
+        $files = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($this->config()['landingpages']['entrypoint'], RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($files as $fileinfo) {
+            $todo = ($fileinfo->isDir() ? 'rmdir' : 'unlink');
+            $todo($fileinfo->getRealPath());
+        }
+
         $filters =[
             'id_zbr_keywords' => [
                 'operator' => '_nnull',
