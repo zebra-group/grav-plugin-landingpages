@@ -498,21 +498,21 @@ class LandingpagesPlugin extends Plugin
                         $params = explode('.', $value);
                         if(isset($params[2])){
                             if(isset($item[$params[0]]) && isset($params[2]) && isset($item[$params[0]][$params[1]][$params[2]])){
-                                $array[$item['id']][$key]  = '"'.$item[$params[0]][$params[1]][$params[2]].'"';
+                                $array[$item['id']][$key]  = $item[$params[0]][$params[1]][$params[2]];
                             }
                             else{
-                                $array[$item['id']][$key]  = '"-"';
+                                $array[$item['id']][$key]  = '-';
                             }
                         }
                         elseif (isset($item[$params[0]]) && isset($params[1]) && isset($item[$params[0]][$params[1]])){
 
-                            $array[$item['id']][$key]  = '"'.$item[$params[0]][$params[1]].'"';
+                            $array[$item['id']][$key]  = $item[$params[0]][$params[1]];
                         }
                         elseif (isset($item[$params[0]])){
-                            $array[$item['id']][$key]  = '"'.$item[$params[0]].'"';
+                            $array[$item['id']][$key]  = $item[$params[0]];
                         }
                         else{
-                            $array[$item['id']][$key]  = '"-"';
+                            $array[$item['id']][$key]  = '-';
                         }
                     }
                 }
