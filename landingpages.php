@@ -453,7 +453,7 @@ class LandingpagesPlugin extends Plugin
             $exportSettings = $this->requestItem($this->config()['landingpages']['confTable']);
             $array = [];
 
-            $settings = array_filter($exportSettings->toArray()['data']['zbr_setting'], function ($match){
+            $settings = array_filter($exportSettings->toArray()['data'], function ($match){
                 $settingName = $_GET[ 'conf' ] ?? $this->config()[ 'landingpages' ][ 'entryConf' ];
 
                 if($match['key'] === $settingName){
