@@ -455,13 +455,14 @@ class LandingpagesPlugin extends Plugin
 
             $settings = array_filter($exportSettings->toArray()['data']['zbr_setting'], function ($match){
                 $settingName = $_GET[ 'conf' ] ?? $this->config()[ 'landingpages' ][ 'entryConf' ];
+
                 if($match['key'] === $settingName){
                     return $match;
                 }
             });
 
             if(!empty($settings)){
-                array_values($settings);
+                $settings = array_values($settings);
             }
             else{
                 echo json_encode([
@@ -485,10 +486,9 @@ class LandingpagesPlugin extends Plugin
                 ],
             ];
 
-            $response = $this->requestItem($entrytable, 0, 3, $filters);
-
+            $response = $this->requestItem($entrytable, 0, 3);
+            $filename = ($_GET['conf'] ?? $this->config()['landingpages']['exportFilename']).'_'.date('Y-m-d_H:i:s').'.csv';
             if($response->getStatusCode() === 200) {
-                $filename = $this->config()['landingpages']['exportFilename'].'_'.date('Y-m-d_H:i:s').'.csv';
                 $formatter = new CsvFormatter(['file_extension' => '.csv', 'delimiter' => ";"]);
                 $file = new CsvFile($this->config()['landingpages']['exportPath'].$filename, $formatter);
 
@@ -496,24 +496,28 @@ class LandingpagesPlugin extends Plugin
 
                     foreach ($settings[0]['value'] as $key => $value){
                         $params = explode('.', $value);
-
-                        if(isset($item[$params[0]]) && isset($params[2]) && isset($item[$params[0]][$params[1]][$params[2]])){
-                            $array[$item['id']][$key]  = $item[$params[0]][$params[1]][$params[2]];
+                        if(isset($params[2])){
+                            if(isset($item[$params[0]]) && isset($params[2]) && isset($item[$params[0]][$params[1]][$params[2]])){
+                                $array[$item['id']][$key]  = '"'.$item[$params[0]][$params[1]][$params[2]].'"';
+                            }
+                            else{
+                                $array[$item['id']][$key]  = '"-"';
+                            }
                         }
                         elseif (isset($item[$params[0]]) && isset($params[1]) && isset($item[$params[0]][$params[1]])){
-                            $array[$item['id']][$key]  = $item[$params[0]][$params[1]];
+
+                            $array[$item['id']][$key]  = '"'.$item[$params[0]][$params[1]].'"';
                         }
                         elseif (isset($item[$params[0]])){
-                            $array[$item['id']][$key]  = $item[$params[0]];
+                            $array[$item['id']][$key]  = '"'.$item[$params[0]].'"';
                         }
                         else{
-                            $array[$item['id']][$key]  = '';
+                            $array[$item['id']][$key]  = '"-"';
                         }
                     }
                 }
                 $file->save(array_values($array));
             }
-
             header( 'Content-type: application/csv' );
             header( 'Content-Disposition: attachment; filename="'.$filename.'"' );
             readfile( $this->config()['landingpages']['exportPath'].$filename );
