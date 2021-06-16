@@ -211,6 +211,9 @@ class LandingpagesPlugin extends Plugin
      * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
      */
     private function processFlexObjects() {
+
+        $this->delTree('user/data/flex-objects');
+
         $collectionArray = $this->config()['landingpages']['mapping']['collections'];
 
         foreach ($collectionArray as $key => $value){
@@ -337,14 +340,7 @@ class LandingpagesPlugin extends Plugin
      */
     private function crawlLandingpages(){
 
-        $files = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($this->config()['landingpages']['entrypoint'], RecursiveDirectoryIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::CHILD_FIRST
-        );
-        foreach ($files as $fileinfo) {
-            $todo = ($fileinfo->isDir() ? 'rmdir' : 'unlink');
-            $todo($fileinfo->getRealPath());
-        }
+        $this->delTree($this->config()['landingpages']['entrypoint']);
 
         $filters =[
             'id_zbr_keywords' => [
@@ -531,6 +527,17 @@ class LandingpagesPlugin extends Plugin
             ], JSON_THROW_ON_ERROR);
 
             exit(403);
+        }
+    }
+
+    private function delTree($dir){
+        $files = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($files as $fileinfo) {
+            $todo = ( $fileinfo->isDir() ? 'rmdir' : 'unlink' );
+            $todo( $fileinfo->getRealPath() );
         }
     }
 }
