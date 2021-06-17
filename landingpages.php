@@ -155,8 +155,8 @@ class LandingpagesPlugin extends Plugin
 
         $requestBody = json_decode(file_get_contents('php://input'), true);
 
-        if($_REQUEST['debug'] === 'true') {
-            $this->writeLog($this->buildLogEntry(json_encode( $requestBody, JSON_THROW_ON_ERROR), 'request from webhook'));
+        if(isset($_REQUEST['debug'])) {
+            $this->writeLog($this->buildLogEntry(json_encode( [$requestBody['collection'], $requestBody['item'], $requestBody['action']], JSON_THROW_ON_ERROR), 'request from webhook'));
         }
 
         $statusCode = 0;
@@ -176,17 +176,20 @@ class LandingpagesPlugin extends Plugin
                     $depth = $value['depth'];
                 }
             }
-
-            switch ($requestBody['action']) {
-                case "create":
-                    $statusCode = $this->createFlexObject($requestBody['collection'], $requestBody['item'], $depth);
-                    break;
-                case "update":
-                    $statusCode = $this->updateFlexObject($requestBody['collection'], $requestBody['item'], $depth);
-                    break;
-                case "delete":
-                    $statusCode = $this->deleteFlexObject($requestBody['collection'], $requestBody['item']);
-                    break;
+            try {
+                switch ($requestBody['action']) {
+                    case "create":
+                        $statusCode = $this->createFlexObject($requestBody['collection'], $requestBody['item'], $depth);
+                        break;
+                    case "update":
+                        $statusCode = $this->updateFlexObject($requestBody['collection'], $requestBody['item'], $depth);
+                        break;
+                    case "delete":
+                        $statusCode = $this->deleteFlexObject($requestBody['collection'], $requestBody['item']);
+                        break;
+                }
+            } catch(\Exception $e) {
+                $this->writeLog($this->buildLogEntry($e, 'something went wrong'));
             }
         }
 
@@ -203,6 +206,9 @@ class LandingpagesPlugin extends Plugin
             'status' => $statusCode,
             'message' => 'something went wrong'
         ], JSON_THROW_ON_ERROR);
+        if(isset($_REQUEST['debug'])) {
+            $this->writeLog($this->buildLogEntry($statusCode, 'something went wrong'));
+        }
         exit($statusCode);
     }
 
@@ -265,7 +271,7 @@ class LandingpagesPlugin extends Plugin
     private function createFlexObject($collection, $id, int $depth = 2) {
         $response = $this->requestItem($collection, $id, $depth);
 
-        if($_REQUEST['debug'] === 'true') {
+        if(isset($_REQUEST['debug'])) {
             $this->writeLog($this->buildLogEntry(json_encode($response->toArray(), JSON_THROW_ON_ERROR), 'create flex object - request to directus | data = response from directus'));
         }
 
@@ -291,21 +297,29 @@ class LandingpagesPlugin extends Plugin
      */
     private function updateFlexObject($collection, $ids, int $depth = 2) {
         foreach ($ids as $id) {
-            $response = $this->requestItem($collection, $id, $depth);
 
-            if($_REQUEST['debug'] === 'true') {
-                $this->writeLog($this->buildLogEntry(json_encode($response->toArray(), JSON_THROW_ON_ERROR), 'update flex object - request to directus | data = response from directus'));
-            }
-            if($response->getStatusCode() === 200) {
-                $object = $this->collection->get($id);
+            try {
+                $response = $this->requestItem($collection, $id, $depth);
 
-                if ($object) {
-                    $object->update($response->toArray()['data']);
-                    $object->save();
-                } else {
-                    $this->createFlexObject($collection, $id);
+                if(isset($_REQUEST['debug'])) {
+                    $this->writeLog($this->buildLogEntry(json_encode($response->toArray(), JSON_THROW_ON_ERROR), 'update flex object - request to directus | data = response from directus'));
+                }
+                if($response->getStatusCode() === 200) {
+                    $object = $this->collection->get($id);
+
+                    if ($object) {
+                        $object->update($response->toArray()['data']);
+                        $object->save();
+                    } else {
+                        $this->createFlexObject($collection, $id);
+                    }
+                }
+            } catch(\Exception $e) {
+                if(isset($_REQUEST['debug'])) {
+                    $this->writeLog($this->buildLogEntry(json_encode($e, JSON_THROW_ON_ERROR), 'something went wrong'));
                 }
             }
+
         }
         return 200;
     }
@@ -320,7 +334,7 @@ class LandingpagesPlugin extends Plugin
         foreach ($ids as $id) {
             $response = $this->requestItem($collection, $id);
 
-            if($_REQUEST['debug'] === 'true') {
+            if(isset($_REQUEST['debug'])) {
                 $this->writeLog($this->buildLogEntry(json_encode($response->toArray(), JSON_THROW_ON_ERROR), 'remove flex object - request to directus | data = response from directus'));
             }
 
