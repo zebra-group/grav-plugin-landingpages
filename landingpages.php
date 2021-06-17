@@ -13,6 +13,8 @@ use Grav\Framework\Flex\Interfaces\FlexCollectionInterface;
 use Grav\Framework\Flex\Interfaces\FlexDirectoryInterface;
 use Grav\Plugin\Directus\Utility\DirectusUtility;
 use Grav\Common\Cache;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use function Couchbase\defaultDecoder;
 
 /**
@@ -156,6 +158,7 @@ class LandingpagesPlugin extends Plugin
         $statusCode = 0;
 
         if(isset($requestBody['collection'])) {
+
             /** @var FlexCollectionInterface $collection */
             $this->collection = $this->flex->getCollection($requestBody['collection']);
 
@@ -208,6 +211,9 @@ class LandingpagesPlugin extends Plugin
      * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
      */
     private function processFlexObjects() {
+
+        $this->delTree('user/data/flex-objects');
+
         $collectionArray = $this->config()['landingpages']['mapping']['collections'];
 
         foreach ($collectionArray as $key => $value){
@@ -278,6 +284,7 @@ class LandingpagesPlugin extends Plugin
     private function updateFlexObject($collection, $ids, int $depth = 2) {
         foreach ($ids as $id) {
             $response = $this->requestItem($collection, $id, $depth);
+
             if($response->getStatusCode() === 200) {
                 $object = $this->collection->get($id);
 
@@ -318,8 +325,9 @@ class LandingpagesPlugin extends Plugin
      * @return \Symfony\Contracts\HttpClient\ResponseInterface
      * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
      */
-    private function requestItem($collection, $id = 0, $depth = 2) {
-        $requestUrl = $this->directusUtil->generateRequestUrl($collection, $id, $depth);
+    private function requestItem($collection, $id = 0, $depth = 2, $filters = []) {
+
+        $requestUrl = $this->directusUtil->generateRequestUrl($collection, $id, $depth, $filters);
         return $this->directusUtil->get($requestUrl);
     }
 
@@ -331,7 +339,21 @@ class LandingpagesPlugin extends Plugin
      * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
      */
     private function crawlLandingpages(){
-        $response = $this->requestItem($this->config()['landingpages']['entrytable'], 0, 4);
+
+        $this->delTree($this->config()['landingpages']['entrypoint']);
+
+        $filters =[
+            'id_zbr_keywords' => [
+                'operator' => '_nnull',
+                'value' => 'true',
+            ],
+            'id_zbr_landingpages' => [
+                'operator' => '_nnull',
+                'value' => 'true',
+            ],
+        ];
+
+        $response = $this->requestItem($this->config()['landingpages']['entrytable'], 0, 2, $filters);
 
 
         if($response->getStatusCode() === 200){
@@ -341,7 +363,7 @@ class LandingpagesPlugin extends Plugin
                     $this->createFile(
                         $this->setFileHeaders($landingpage),
                         $landingpage[$this->config()['landingpages']['mapping']['keyword']][$this->config()['landingpages']['mapping']['keywordHash']],
-                        $landingpage['id_zbr_landingpages']['id_zbr_audiences']['id']
+                        $landingpage['id_zbr_landingpages']['id_zbr_audiences']
                     );
 
                     $i++;
@@ -400,7 +422,7 @@ class LandingpagesPlugin extends Plugin
                 'dataset:' . "\n" .
                 '    '.$mappingCollections['id_zbr_keywords']['tableName'].': ' . $dataSet['id_zbr_keywords']['id'] ."\n" .
                 '    '.$mappingCollections['id_zbr_landingpages']['tableName'].': ' . $dataSet['id_zbr_landingpages']['id'] ."\n" .
-                '    '.$mappingCollections['id_zbr_audience']['tableName'].': ' . $dataSet['id_zbr_landingpages']['id_zbr_audiences']['id'] ."\n" .
+                '    '.$mappingCollections['id_zbr_audience']['tableName'].': ' . $dataSet['id_zbr_landingpages']['id_zbr_audiences'] ."\n" .
                 '---';
         }
     }
@@ -431,15 +453,16 @@ class LandingpagesPlugin extends Plugin
             $exportSettings = $this->requestItem($this->config()['landingpages']['confTable']);
             $array = [];
 
-            $settings = array_filter($exportSettings->toArray()['data']['zbr_setting'], function ($match){
+            $settings = array_filter($exportSettings->toArray()['data'], function ($match){
                 $settingName = $_GET[ 'conf' ] ?? $this->config()[ 'landingpages' ][ 'entryConf' ];
+
                 if($match['key'] === $settingName){
                     return $match;
                 }
             });
 
             if(!empty($settings)){
-                array_values($settings);
+                $settings = array_values($settings);
             }
             else{
                 echo json_encode([
@@ -452,10 +475,20 @@ class LandingpagesPlugin extends Plugin
             $settings[0]['value']['entrytable'] ? $entrytable = $settings[0]['value']['entrytable'] : $entrytable = $this->config()['landingpages']['entrytable'];
             unset($settings[0]['value']['entrytable']);
 
-            $response = $this->requestItem($entrytable, 0, 4);
+            $filters =[
+                'id_zbr_keywords' => [
+                    'operator' => '_nnull',
+                    'value' => 'true',
+                ],
+                'id_zbr_landingpages' => [
+                    'operator' => '_nnull',
+                    'value' => 'true',
+                ],
+            ];
 
+            $response = $this->requestItem($entrytable, 0, 3);
+            $filename = ($_GET['conf'] ?? $this->config()['landingpages']['exportFilename']).'_'.date('Y-m-d_H:i:s').'.csv';
             if($response->getStatusCode() === 200) {
-                $filename = $this->config()['landingpages']['exportFilename'].'_'.date('Y-m-d_H:i:s').'.csv';
                 $formatter = new CsvFormatter(['file_extension' => '.csv', 'delimiter' => ";"]);
                 $file = new CsvFile($this->config()['landingpages']['exportPath'].$filename, $formatter);
 
@@ -463,24 +496,28 @@ class LandingpagesPlugin extends Plugin
 
                     foreach ($settings[0]['value'] as $key => $value){
                         $params = explode('.', $value);
-
-                        if(isset($item[$params[0]]) && isset($params[2]) && isset($item[$params[0]][$params[1]][$params[2]])){
-                            $array[$item['id']][$key]  = $item[$params[0]][$params[1]][$params[2]];
+                        if(isset($params[2])){
+                            if(isset($item[$params[0]]) && isset($params[2]) && isset($item[$params[0]][$params[1]][$params[2]])){
+                                $array[$item['id']][$key]  = $item[$params[0]][$params[1]][$params[2]];
+                            }
+                            else{
+                                $array[$item['id']][$key]  = '-';
+                            }
                         }
                         elseif (isset($item[$params[0]]) && isset($params[1]) && isset($item[$params[0]][$params[1]])){
+
                             $array[$item['id']][$key]  = $item[$params[0]][$params[1]];
                         }
                         elseif (isset($item[$params[0]])){
                             $array[$item['id']][$key]  = $item[$params[0]];
                         }
                         else{
-                            $array[$item['id']][$key]  = '';
+                            $array[$item['id']][$key]  = '-';
                         }
                     }
                 }
                 $file->save(array_values($array));
             }
-
             header( 'Content-type: application/csv' );
             header( 'Content-Disposition: attachment; filename="'.$filename.'"' );
             readfile( $this->config()['landingpages']['exportPath'].$filename );
@@ -494,6 +531,17 @@ class LandingpagesPlugin extends Plugin
             ], JSON_THROW_ON_ERROR);
 
             exit(403);
+        }
+    }
+
+    private function delTree($dir){
+        $files = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($files as $fileinfo) {
+            $todo = ( $fileinfo->isDir() ? 'rmdir' : 'unlink' );
+            $todo( $fileinfo->getRealPath() );
         }
     }
 }
