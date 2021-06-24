@@ -334,17 +334,9 @@ class LandingpagesPlugin extends Plugin
      */
     private function deleteFlexObject($collection, $ids) {
         foreach ($ids as $id) {
-            $response = $this->requestItem($collection, $id);
-
-            if(isset($_REQUEST['debug'])) {
-                $this->writeLog($this->buildLogEntry(json_encode($response->toArray(), JSON_THROW_ON_ERROR), 'remove flex object - request to directus | data = response from directus'));
-            }
-
-            if($response->getStatusCode() === 200) {
-                $object = $this->collection->get($id);
-                if($object) {
-                    $object->delete();
-                }
+            $object = $this->collection->get($id);
+            if($object) {
+                $object->delete();
             }
         }
         return 200;
