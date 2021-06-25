@@ -99,18 +99,6 @@ class LandingpagesPlugin extends Plugin
      * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
      */
     public function onPageInitialized() {
-        $requestedUri = $this->grav['uri']->path();
-
-        $uriParams = array_merge(array_filter(explode('/', $requestedUri)));
-        $urlParams = $this->grav['uri']->query(null, true);
-        unset($urlParams['audience']);
-
-        if(isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && isset($_GET['audience']) ){
-            $this->redirect($requestedUri.'/'.$_GET['audience'] . ($urlParams ? '?'.http_build_query($urlParams) : '') , 301);
-        }
-        elseif (isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && !isset($uriParams[2])){
-            $this->redirect($requestedUri.'/1'. ($urlParams ? '?'.http_build_query($urlParams) : ''), 301);
-        }
 
         /** @var Flex $flex */
         $this->flex = Grav::instance()->get('flex');
@@ -125,6 +113,66 @@ class LandingpagesPlugin extends Plugin
         );
 
         $this->processWebHooks($this->grav['uri']->route());
+
+        $requestedUri = $this->grav['uri']->path();
+
+        $uriParams = array_merge(array_filter(explode('/', $requestedUri)));
+        $urlParams = $this->grav['uri']->query(null, true);
+
+        $this->validationAudience($urlParams);
+        unset($urlParams['audience']);
+
+        if(isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && isset($_GET['audience']) ){
+            $redirectUrl = $requestedUri.'/'.$_GET['audience'] . ($urlParams ? '?'.http_build_query($urlParams) : '');
+            $validateRedirectUrl = $this->validationRedirect($redirectUrl);
+            $this->redirect( $validateRedirectUrl, 301);
+        }
+        elseif (isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && !isset($uriParams[2])){
+            $redirectUrl = $requestedUri.'/1'. ($urlParams ? '?'.http_build_query($urlParams) : '');
+            $validateRedirectUrl = $this->validationRedirect($redirectUrl);
+            $this->redirect($validateRedirectUrl, 301);
+        }
+
+    }
+
+    /**
+     * @param $redirectUrl
+     * @return string
+     */
+    private function validationRedirect($redirectUrl)
+    {
+        $handle=@fopen($this->grav['uri']->base().'/'.$redirectUrl,"r");
+        if ($handle){
+            fclose($handle);
+            return $redirectUrl;
+        }
+        else{
+            return '/';
+        }
+    }
+
+    /**
+     * @param $urlParams
+     * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
+     * @throws \Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface
+     * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
+     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
+     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+     */
+    private function validationAudience($urlParams){
+        if(isset($urlParams['audience'])){
+            $filters =[
+                'id' => [
+                    'operator' => '_eq',
+                    'value' => $urlParams['audience'],
+                ],
+            ];
+
+            $response = $this->requestItem('zbr_audiences', 0, 1, $filters);
+            if(empty($response->toArray()['data'])){
+                unset($_GET['audience']);
+            }
+        }
     }
 
     /**
