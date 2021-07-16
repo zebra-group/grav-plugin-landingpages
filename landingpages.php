@@ -100,6 +100,24 @@ class LandingpagesPlugin extends Plugin
      */
     public function onPageInitialized() {
 
+        $requestedUri = $this->grav['uri']->path();
+
+        $uriParams = array_merge(array_filter(explode('/', $requestedUri)));
+        $urlParams = $this->grav['uri']->query(null, true);
+        unset($urlParams['audience']);
+
+        if(isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && isset($_GET['audience']) ){
+            if(isset($uriParams[2]) && isset($_GET['audience'])) {
+                $this->redirect($requestedUri . ($urlParams ? '?'.http_build_query($urlParams) : '') , 200);
+            } else {
+                $this->redirect($requestedUri.'/'.$_GET['audience'] . ($urlParams ? '?'.http_build_query($urlParams) : '') , 200);
+            }
+
+        }
+        elseif (isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && !isset($uriParams[2])){
+            $this->redirect($requestedUri.'/1'. ($urlParams ? '?'.http_build_query($urlParams) : ''), 200);
+        }
+
         /** @var Flex $flex */
         $this->flex = Grav::instance()->get('flex');
 
