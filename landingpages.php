@@ -100,6 +100,24 @@ class LandingpagesPlugin extends Plugin
      */
     public function onPageInitialized() {
 
+        $requestedUri = $this->grav['uri']->path();
+
+        $uriParams = array_merge(array_filter(explode('/', $requestedUri)));
+        $urlParams = $this->grav['uri']->query(null, true);
+        unset($urlParams['audience']);
+
+        if(isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && isset($_GET['audience']) ){
+            if(isset($uriParams[2]) && isset($_GET['audience'])) {
+                $this->redirect($requestedUri . ($urlParams ? '?'.http_build_query($urlParams) : '') , 301);
+            } else {
+                $this->redirect($requestedUri.'/'.$_GET['audience'] . ($urlParams ? '?'.http_build_query($urlParams) : '') , 301);
+            }
+
+        }
+        elseif (isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && !isset($uriParams[2])){
+            $this->redirect($requestedUri.'/1'. ($urlParams ? '?'.http_build_query($urlParams) : ''), 301);
+        }
+
         /** @var Flex $flex */
         $this->flex = Grav::instance()->get('flex');
 
@@ -205,6 +223,10 @@ class LandingpagesPlugin extends Plugin
 
         $requestBody = json_decode(file_get_contents('php://input'), true);
 
+        if(isset($_REQUEST['debug'])) {
+            $this->writeLog($this->buildLogEntry(json_encode( [$requestBody['collection'], $requestBody['item'], $requestBody['action']], JSON_THROW_ON_ERROR), 'request from webhook'));
+        }
+
         $statusCode = 0;
 
         if(isset($requestBody['collection'])) {
@@ -222,17 +244,20 @@ class LandingpagesPlugin extends Plugin
                     $depth = $value['depth'];
                 }
             }
-
-            switch ($requestBody['action']) {
-                case "create":
-                    $statusCode = $this->createFlexObject($requestBody['collection'], $requestBody['item'], $depth);
-                    break;
-                case "update":
-                    $statusCode = $this->updateFlexObject($requestBody['collection'], $requestBody['item'], $depth);
-                    break;
-                case "delete":
-                    $statusCode = $this->deleteFlexObject($requestBody['collection'], $requestBody['item']);
-                    break;
+            try {
+                switch ($requestBody['action']) {
+                    case "create":
+                        $statusCode = $this->createFlexObject($requestBody['collection'], $requestBody['item'], $depth);
+                        break;
+                    case "update":
+                        $statusCode = $this->updateFlexObject($requestBody['collection'], $requestBody['item'], $depth);
+                        break;
+                    case "delete":
+                        $statusCode = $this->deleteFlexObject($requestBody['collection'], $requestBody['item']);
+                        break;
+                }
+            } catch(\Exception $e) {
+                $this->writeLog($this->buildLogEntry($e, 'something went wrong'));
             }
         }
 
@@ -249,6 +274,9 @@ class LandingpagesPlugin extends Plugin
             'status' => $statusCode,
             'message' => 'something went wrong'
         ], JSON_THROW_ON_ERROR);
+        if(isset($_REQUEST['debug'])) {
+            $this->writeLog($this->buildLogEntry($statusCode, 'something went wrong'));
+        }
         exit($statusCode);
     }
 
@@ -311,6 +339,10 @@ class LandingpagesPlugin extends Plugin
     private function createFlexObject($collection, $id, int $depth = 2) {
         $response = $this->requestItem($collection, $id, $depth);
 
+        if(isset($_REQUEST['debug'])) {
+            $this->writeLog($this->buildLogEntry(json_encode($response->toArray(), JSON_THROW_ON_ERROR), 'create flex object - request to directus | data = response from directus'));
+        }
+
         if($response->getStatusCode() === 200) {
             $data = $response->toArray()['data'];
             $objectInstance = new FlexObject($data, $data['id'], $this->directory);
@@ -333,18 +365,29 @@ class LandingpagesPlugin extends Plugin
      */
     private function updateFlexObject($collection, $ids, int $depth = 2) {
         foreach ($ids as $id) {
-            $response = $this->requestItem($collection, $id, $depth);
 
-            if($response->getStatusCode() === 200) {
-                $object = $this->collection->get($id);
+            try {
+                $response = $this->requestItem($collection, $id, $depth);
 
-                if ($object) {
-                    $object->update($response->toArray()['data']);
-                    $object->save();
-                } else {
-                    $this->createFlexObject($collection, $id);
+                if(isset($_REQUEST['debug'])) {
+                    $this->writeLog($this->buildLogEntry(json_encode($response->toArray(), JSON_THROW_ON_ERROR), 'update flex object - request to directus | data = response from directus'));
+                }
+                if($response->getStatusCode() === 200) {
+                    $object = $this->collection->get($id);
+
+                    if ($object) {
+                        $object->update($response->toArray()['data']);
+                        $object->save();
+                    } else {
+                        $this->createFlexObject($collection, $id);
+                    }
+                }
+            } catch(\Exception $e) {
+                if(isset($_REQUEST['debug'])) {
+                    $this->writeLog($this->buildLogEntry(json_encode($e, JSON_THROW_ON_ERROR), 'something went wrong'));
                 }
             }
+
         }
         return 200;
     }
@@ -357,12 +400,9 @@ class LandingpagesPlugin extends Plugin
      */
     private function deleteFlexObject($collection, $ids) {
         foreach ($ids as $id) {
-            $response = $this->requestItem($collection, $id);
-            if($response->getStatusCode() === 200) {
-                $object = $this->collection->get($id);
-                if($object) {
-                    $object->delete();
-                }
+            $object = $this->collection->get($id);
+            if($object) {
+                $object->delete();
             }
         }
         return 200;
@@ -404,7 +444,6 @@ class LandingpagesPlugin extends Plugin
         ];
 
         $response = $this->requestItem($this->config()['landingpages']['entrytable'], 0, 2, $filters);
-
 
         if($response->getStatusCode() === 200){
             $i = 0;
@@ -593,5 +632,20 @@ class LandingpagesPlugin extends Plugin
             $todo = ( $fileinfo->isDir() ? 'rmdir' : 'unlink' );
             $todo( $fileinfo->getRealPath() );
         }
+    }
+
+    private function buildLogEntry($data, $action) {
+        $logText =  '######################################################################' . "\n" .
+                    'Date & Time: ' . date("Y/m/d H:i:s", time()) . "\n" .
+                    'Action: ' . $action . "\n" .
+                    'Data:' . "\n" .
+                    '----------------------------------------------------------------------' . "\n" .
+                    $data . "\n" .
+                    '----------------------------------------------------------------------' . "\n";
+        return $logText;
+    }
+
+    private function writeLog($data) {
+        file_put_contents('logs/webhook_log_'.date("j.n.Y-H").'.log', $data, FILE_APPEND);
     }
 }
