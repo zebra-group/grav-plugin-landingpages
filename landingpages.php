@@ -232,6 +232,21 @@ class LandingpagesPlugin extends Plugin
             return true;
         }
         else{
+
+            if(!empty($this->config()['mailing'])){
+                $content = 'URL: '.$this->grav['uri']->url.'<br> IP: '.$this->grav['uri']->ip();
+
+                /** @var EmailPlugin $emailPlugin /
+                $emailPlugin = new EmailPlugin(‘Email’, Grav::instance());
+                $emailPlugin->onPluginsInitialized();
+                /* @var \Swift_Message $message */
+                $message = Grav::instance()['Email']->message($this->config()['mailing']['defaultSubject'], $content, 'text/html');
+                $message->setFrom($this->config()['mailing']['sender_mail'], 'Zebra Group')
+                    ->setTo($this->config()['mailing']['recipient_mail'])
+                ;
+                $sent = Grav::instance()['Email']->send($message);
+            }
+
             echo json_encode([
                 'status' => 403,
                 'message' => 'access denied'

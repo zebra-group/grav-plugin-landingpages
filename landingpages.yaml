@@ -1,6 +1,11 @@
 enabled: true
 ipList: '127.0.0.1, 123.125.45.4'
 useWhiteList: false
+mailing:
+  smtp_server: 'https://aokbysea.ddev.site:8026'
+  sender_mail: 'noreply@zebra.de'
+  recipient_mail: 'viviane.halfter@mindbox.de.de'
+  defaultSubject: 'access denied'
 landingpages:
   entryslug: 'landingpages'
   entrypoint: 'user/pages/03.landingpages'
