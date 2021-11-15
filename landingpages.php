@@ -13,6 +13,8 @@ use Grav\Framework\Flex\Interfaces\FlexCollectionInterface;
 use Grav\Framework\Flex\Interfaces\FlexDirectoryInterface;
 use Grav\Plugin\Directus\Utility\DirectusUtility;
 use Grav\Common\Cache;
+use Org\Heigl\Hyphenator\Hyphenator;
+use Org\Heigl\Hyphenator\Options;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use function Couchbase\defaultDecoder;
@@ -89,7 +91,29 @@ class LandingpagesPlugin extends Plugin
         // Enable the main events we are interested in
         $this->enable([
             'onPageInitialized' => ['onPageInitialized', 0],
+            'onTwigInitialized' => ['onTwigInitialized', 0]
         ]);
+    }
+
+    public function onTwigInitialized() {
+
+        $this->grav['twig']->twig()->addFilter(
+            new \Twig_SimpleFilter('hyphen', [$this, 'hyphenizeString'])
+        );
+    }
+
+    public function hyphenizeString($string) {
+        $o = new Options();
+        $o->setHyphen('&shy;')
+            ->setDefaultLocale('de_DE')
+            ->setRightMin(2)
+            ->setLeftMin(2)
+            ->setWordMin(5)
+            ->setFilters('Simple')
+            ->setTokenizers(['Whitespace', 'Punctuation']);
+        $h = new Hyphenator();
+        $h->setOptions($o);
+        return $h->hyphenate($string);
     }
 
     /**
