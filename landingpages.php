@@ -103,7 +103,6 @@ class LandingpagesPlugin extends Plugin
     }
 
     public function hyphenizeString($string, int $charCount = 5) {
-        dump($charCount);
         $o = new Options();
         $o->setHyphen('&shy;')
             ->setDefaultLocale('de_DE')
