@@ -653,8 +653,10 @@ class LandingpagesPlugin extends Plugin
         RecursiveIteratorIterator::CHILD_FIRST
         );
         foreach ($files as $fileinfo) {
-            $todo = ( $fileinfo->isDir() ? 'rmdir' : 'unlink' );
-            $todo( $fileinfo->getRealPath() );
+            if($fileinfo->getFilename() !== 'error' && $fileinfo->getFilename() !== 'error.md') {
+                $todo = ( $fileinfo->isDir() ? 'rmdir' : 'unlink' );
+                $todo( $fileinfo->getRealPath() );
+            }
         }
     }
 
