@@ -102,13 +102,14 @@ class LandingpagesPlugin extends Plugin
         );
     }
 
-    public function hyphenizeString($string) {
+    public function hyphenizeString($string, int $charCount = 5) {
+        dump($charCount);
         $o = new Options();
         $o->setHyphen('&shy;')
             ->setDefaultLocale('de_DE')
             ->setRightMin(2)
             ->setLeftMin(2)
-            ->setWordMin(5)
+            ->setWordMin($charCount)
             ->setFilters('Simple')
             ->setTokenizers(['Whitespace', 'Punctuation']);
         $h = new Hyphenator();
