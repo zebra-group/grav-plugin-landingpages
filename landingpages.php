@@ -223,21 +223,61 @@ class LandingpagesPlugin extends Plugin
      * @throws \JsonException
      */
     private function processWebHooks(string $route) {
-        switch ($route) {
-            case '/' . $this->config["plugins.directus"]['directus']['hookPrefix'] . '/update-flex-object':
-                $this->processFlexObject();
-                break;
-            case '/' . $this->config["plugins.directus"]['directus']['hookPrefix'] . '/crawl-landingpages':
-                $this->crawlLandingpages();
-                break;
-            case '/' . $this->config["plugins.directus"]['directus']['hookPrefix'] . '/exportCSV':
-                $this->exportCSV();
-                break;
-            case '/' . $this->config["plugins.directus"]['directus']['hookPrefix'] . '/update-flex-objects':
-                $this->processFlexObjects();
-                break;
+
+        $error = 1;
+        $ipList = explode(', ', $this->config()['ipList']);
+
+        if(!empty($this->config()['useWhiteList']) && $this->config()['useWhiteList'] === true ){
+            foreach ($ipList as $key => $value){
+                if( $value === $this->grav['uri']->ip() ){
+                    $error = 0;
+                }
+            }
         }
-        return true;
+        else{
+            $error = 0;
+        }
+
+        if($error === 0){
+            switch ($route) {
+                case '/' . $this->config["plugins.directus"]['directus']['hookPrefix'] . '/update-flex-object':
+                    $this->processFlexObject();
+                    break;
+                case '/' . $this->config["plugins.directus"]['directus']['hookPrefix'] . '/crawl-landingpages':
+                    $this->crawlLandingpages();
+                    break;
+                case '/' . $this->config["plugins.directus"]['directus']['hookPrefix'] . '/exportCSV':
+                    $this->exportCSV();
+                    break;
+                case '/' . $this->config["plugins.directus"]['directus']['hookPrefix'] . '/update-flex-objects':
+                    $this->processFlexObjects();
+                    break;
+            }
+            return true;
+        }
+        else{
+
+            if(!empty($this->config()['mailing'])){
+                $content = 'URL: '.$this->grav['uri']->url.'<br> IP: '.$this->grav['uri']->ip();
+
+                /** @var EmailPlugin $emailPlugin /
+                $emailPlugin = new EmailPlugin(‘Email’, Grav::instance());
+                $emailPlugin->onPluginsInitialized();
+                /* @var \Swift_Message $message */
+                $message = Grav::instance()['Email']->message($this->config()['mailing']['defaultSubject'], $content, 'text/html');
+                $message->setFrom($this->config()['mailing']['sender_mail'], 'Zebra Group')
+                    ->setTo($this->config()['mailing']['recipient_mail'])
+                ;
+                $sent = Grav::instance()['Email']->send($message);
+            }
+
+            echo json_encode([
+                'status' => 403,
+                'message' => 'access denied'
+            ], JSON_THROW_ON_ERROR);
+            exit;
+        }
+
     }
 
     /**
