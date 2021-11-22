@@ -130,6 +130,7 @@ class LandingpagesPlugin extends Plugin
         $urlParams = $this->grav['uri']->query(null, true);
         unset($urlParams['audience']);
 
+        // TODO: Fallback for redirect
         if(isset($this->config()['landingpages']['entryslug'])) {
             if(isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && isset($_GET['audience']) ){
                 if(isset($uriParams[2]) && isset($_GET['audience'])) {
@@ -138,10 +139,6 @@ class LandingpagesPlugin extends Plugin
                     $this->redirect($requestedUri.'/'.$_GET['audience'] . ($urlParams ? '?'.http_build_query($urlParams) : '') , 301);
                 }
             } elseif (isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && !isset($uriParams[2])){
-                $this->redirect($requestedUri.'/1'. ($urlParams ? '?'.http_build_query($urlParams) : ''), 301);
-            }
-        } else {
-            if (isset($uriParams[0]) && !isset($uriParams[1])){
                 $this->redirect($requestedUri.'/1'. ($urlParams ? '?'.http_build_query($urlParams) : ''), 301);
             }
         }
@@ -168,6 +165,7 @@ class LandingpagesPlugin extends Plugin
         $this->validationAudience($urlParams);
         unset($urlParams['audience']);
 
+        // TODO: Fallback for redirect
         if(isset($this->config()['landingpages']['entryslug'])) {
             if(isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && isset($_GET['audience']) ){
                 $redirectUrl = $requestedUri.'/'.$_GET['audience'] . ($urlParams ? '?'.http_build_query($urlParams) : '');
@@ -177,10 +175,6 @@ class LandingpagesPlugin extends Plugin
                 $redirectUrl = $requestedUri.'/1'. ($urlParams ? '?'.http_build_query($urlParams) : '');
                 $validateRedirectUrl = $this->validationRedirect($redirectUrl);
                 $this->redirect($validateRedirectUrl, 301);
-            }
-        } else {
-            if (isset($uriParams[0]) && !isset($uriParams[1])){
-                $this->redirect($requestedUri.'/1'. ($urlParams ? '?'.http_build_query($urlParams) : ''), 301);
             }
         }
     }
