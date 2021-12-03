@@ -13,6 +13,8 @@ use Grav\Framework\Flex\Interfaces\FlexCollectionInterface;
 use Grav\Framework\Flex\Interfaces\FlexDirectoryInterface;
 use Grav\Plugin\Directus\Utility\DirectusUtility;
 use Grav\Common\Cache;
+use Org\Heigl\Hyphenator\Hyphenator;
+use Org\Heigl\Hyphenator\Options;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use function Couchbase\defaultDecoder;
@@ -89,7 +91,29 @@ class LandingpagesPlugin extends Plugin
         // Enable the main events we are interested in
         $this->enable([
             'onPageInitialized' => ['onPageInitialized', 0],
+            'onTwigInitialized' => ['onTwigInitialized', 0]
         ]);
+    }
+
+    public function onTwigInitialized() {
+
+        $this->grav['twig']->twig()->addFilter(
+            new \Twig_SimpleFilter('hyphen', [$this, 'hyphenizeString'])
+        );
+    }
+
+    public function hyphenizeString($string, int $charCount = 5) {
+        $o = new Options();
+        $o->setHyphen('&shy;')
+            ->setDefaultLocale('de_DE')
+            ->setRightMin(2)
+            ->setLeftMin(2)
+            ->setWordMin($charCount)
+            ->setFilters('Simple')
+            ->setTokenizers(['Whitespace', 'Punctuation']);
+        $h = new Hyphenator();
+        $h->setOptions($o);
+        return $h->hyphenate($string);
     }
 
     /**
@@ -106,16 +130,17 @@ class LandingpagesPlugin extends Plugin
         $urlParams = $this->grav['uri']->query(null, true);
         unset($urlParams['audience']);
 
-        if(isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && isset($_GET['audience']) ){
-            if(isset($uriParams[2]) && isset($_GET['audience'])) {
-                $this->redirect($requestedUri . ($urlParams ? '?'.http_build_query($urlParams) : '') , 301);
-            } else {
-                $this->redirect($requestedUri.'/'.$_GET['audience'] . ($urlParams ? '?'.http_build_query($urlParams) : '') , 301);
+        // TODO: Fallback for redirect
+        if(isset($this->config()['landingpages']['entryslug'])) {
+            if(isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && isset($_GET['audience']) ){
+                if(isset($uriParams[2]) && isset($_GET['audience'])) {
+                    $this->redirect($requestedUri . ($urlParams ? '?'.http_build_query($urlParams) : '') , 301);
+                } else {
+                    $this->redirect($requestedUri.'/'.$_GET['audience'] . ($urlParams ? '?'.http_build_query($urlParams) : '') , 301);
+                }
+            } elseif (isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && !isset($uriParams[2])){
+                $this->redirect($requestedUri.'/1'. ($urlParams ? '?'.http_build_query($urlParams) : ''), 301);
             }
-
-        }
-        elseif (isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && !isset($uriParams[2])){
-            $this->redirect($requestedUri.'/1'. ($urlParams ? '?'.http_build_query($urlParams) : ''), 301);
         }
 
         /** @var Flex $flex */
@@ -140,17 +165,18 @@ class LandingpagesPlugin extends Plugin
         $this->validationAudience($urlParams);
         unset($urlParams['audience']);
 
-        if(isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && isset($_GET['audience']) ){
-            $redirectUrl = $requestedUri.'/'.$_GET['audience'] . ($urlParams ? '?'.http_build_query($urlParams) : '');
-            $validateRedirectUrl = $this->validationRedirect($redirectUrl);
-            $this->redirect( $validateRedirectUrl, 301);
+        // TODO: Fallback for redirect
+        if(isset($this->config()['landingpages']['entryslug'])) {
+            if(isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && isset($_GET['audience']) ){
+                $redirectUrl = $requestedUri.'/'.$_GET['audience'] . ($urlParams ? '?'.http_build_query($urlParams) : '');
+                $validateRedirectUrl = $this->validationRedirect($redirectUrl);
+                $this->redirect( $validateRedirectUrl, 301);
+            } elseif (isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && !isset($uriParams[2])){
+                $redirectUrl = $requestedUri.'/1'. ($urlParams ? '?'.http_build_query($urlParams) : '');
+                $validateRedirectUrl = $this->validationRedirect($redirectUrl);
+                $this->redirect($validateRedirectUrl, 301);
+            }
         }
-        elseif (isset($uriParams[0]) && $uriParams[0] === $this->config()['landingpages']['entryslug'] && !isset($uriParams[2])){
-            $redirectUrl = $requestedUri.'/1'. ($urlParams ? '?'.http_build_query($urlParams) : '');
-            $validateRedirectUrl = $this->validationRedirect($redirectUrl);
-            $this->redirect($validateRedirectUrl, 301);
-        }
-
     }
 
     /**
@@ -632,8 +658,10 @@ class LandingpagesPlugin extends Plugin
         RecursiveIteratorIterator::CHILD_FIRST
         );
         foreach ($files as $fileinfo) {
-            $todo = ( $fileinfo->isDir() ? 'rmdir' : 'unlink' );
-            $todo( $fileinfo->getRealPath() );
+            if($fileinfo->getFilename() !== 'error' && $fileinfo->getFilename() !== 'error.md') {
+                $todo = ( $fileinfo->isDir() ? 'rmdir' : 'unlink' );
+                $todo( $fileinfo->getRealPath() );
+            }
         }
     }
 

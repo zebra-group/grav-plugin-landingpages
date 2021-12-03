@@ -7,6 +7,10 @@ namespace Composer\Autoload;
 class ComposerStaticInitba825490186df12d2753d47ec562d511
 {
     public static $prefixLengthsPsr4 = array (
+        'O' => 
+        array (
+            'Org\\Heigl\\Hyphenator\\' => 21,
+        ),
         'G' => 
         array (
             'Grav\\Plugin\\Landingpages\\' => 25,
@@ -14,6 +18,10 @@ class ComposerStaticInitba825490186df12d2753d47ec562d511
     );
 
     public static $prefixDirsPsr4 = array (
+        'Org\\Heigl\\Hyphenator\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/org_heigl/hyphenator/src',
+        ),
         'Grav\\Plugin\\Landingpages\\' => 
         array (
             0 => __DIR__ . '/../..' . '/classes',
