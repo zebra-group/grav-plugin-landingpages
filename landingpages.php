@@ -264,19 +264,21 @@ class LandingpagesPlugin extends Plugin
             $this->directory = $this->flex->getDirectory($requestBody['collection']);
 
             $depth = 2;
+            $filter = [];
 
             foreach($this->config()['landingpages']['mapping']['collections'] as $key => $value) {
                 if($value['tableName'] === $requestBody['collection']) {
                     $depth = $value['depth'];
+                    $filter = $value['filter'] ?? [];
                 }
             }
             try {
                 switch ($requestBody['action']) {
                     case "create":
-                        $statusCode = $this->createFlexObject($requestBody['collection'], $requestBody['item'], $depth);
+                        $statusCode = $this->createFlexObject($requestBody['collection'], $requestBody['item'], $depth, $filter);
                         break;
                     case "update":
-                        $statusCode = $this->updateFlexObject($requestBody['collection'], $requestBody['item'], $depth);
+                        $statusCode = $this->updateFlexObject($requestBody['collection'], $requestBody['item'], $depth, $filter);
                         break;
                     case "delete":
                         $statusCode = $this->deleteFlexObject($requestBody['collection'], $requestBody['item']);
@@ -355,6 +357,7 @@ class LandingpagesPlugin extends Plugin
      * @param $collection
      * @param $id
      * @param int $depth
+     * @param array $filterArray
      * @return int
      * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
      * @throws \Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface
@@ -362,8 +365,8 @@ class LandingpagesPlugin extends Plugin
      * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
      * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
      */
-    private function createFlexObject($collection, $id, int $depth = 2) {
-        $response = $this->requestItem($collection, $id, $depth);
+    private function createFlexObject($collection, $id, int $depth = 2, array $filterArray = []) {
+        $response = $this->requestItem($collection, $id, $depth, $filterArray);
 
         if(isset($_REQUEST['debug'])) {
             $this->writeLog($this->buildLogEntry(json_encode($response->toArray(), JSON_THROW_ON_ERROR), 'create flex object - request to directus | data = response from directus'));
@@ -389,11 +392,11 @@ class LandingpagesPlugin extends Plugin
      * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
      * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
      */
-    private function updateFlexObject($collection, $ids, int $depth = 2) {
+    private function updateFlexObject($collection, $ids, int $depth = 2, array $filter = []) {
         foreach ($ids as $id) {
 
             try {
-                $response = $this->requestItem($collection, $id, $depth);
+                $response = $this->requestItem($collection, $id, $depth, $filter);
 
                 if(isset($_REQUEST['debug'])) {
                     $this->writeLog($this->buildLogEntry(json_encode($response->toArray(), JSON_THROW_ON_ERROR), 'update flex object - request to directus | data = response from directus'));
