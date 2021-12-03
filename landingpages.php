@@ -302,7 +302,7 @@ class LandingpagesPlugin extends Plugin
             /** @var FlexDirectoryInterface $directory */
             $this->directory = $this->flex->getDirectory($value['tableName']);
 
-            $response = $this->requestItem($value['tableName'], 0, ($value['depth'] ?? 2));
+            $response = $this->requestItem($value['tableName'], 0, ($value['depth'] ?? 2), ($value['filter'] ?? []));
 
             foreach ($response->toArray()['data'] as $item){
                 $object = $this->collection->get($item['id']);
